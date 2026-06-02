@@ -1,6 +1,7 @@
 import base64
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -46,6 +47,68 @@ STAGE_COLUMNS = {
 
 def format_percent(value):
     return f"{value * 100:.1f}%"
+
+def color_rank_columns(df, exclude_cols):
+    colors = ["#16a34a", "#ca8a04", "#ea580c", "#dc2626"]  # green, yellow, orange, red
+    
+    def rank_color(col):
+        if col.name in exclude_cols:
+            return [""] * len(col)
+
+        numeric = pd.to_numeric(col, errors="coerce")
+        if numeric.notna().sum() == 0:
+            return [""] * len(col)
+
+        ranks = numeric.rank(ascending=False, method="first")
+        styles = []
+
+        for rank in ranks:
+            if pd.isna(rank) or rank > len(colors):
+                styles.append("")
+            else:
+                color = colors[int(rank) - 1]
+                styles.append(f"background-color: {color}; color: white")
+
+        return styles
+    
+    return df.style.apply(rank_color, axis=0)
+
+
+def add_underrated_scores(source_df):
+    result = source_df.copy()
+    feature_cols = ["PTS", "USG_PCT", "MIN"]
+    target_col = "TRUE_SCORING_IMPACT"
+
+    model_df = result[feature_cols + [target_col]].dropna()
+    x = model_df[feature_cols].to_numpy(dtype=float)
+    y = model_df[target_col].to_numpy(dtype=float)
+
+    x_with_intercept = np.column_stack([np.ones(len(x)), x])
+    coefficients, *_ = np.linalg.lstsq(x_with_intercept, y, rcond=None)
+
+    prediction_features = result[feature_cols].apply(pd.to_numeric, errors="coerce")
+    valid_predictions = prediction_features.notna().all(axis=1)
+
+    result["EXPECTED_IMPACT"] = pd.NA
+    result.loc[valid_predictions, "EXPECTED_IMPACT"] = (
+        np.column_stack(
+            [
+                np.ones(valid_predictions.sum()),
+                prediction_features.loc[valid_predictions].to_numpy(dtype=float),
+            ]
+        )
+        @ coefficients
+    )
+
+    result["UNDERRATED_SCORE"] = (
+        result[target_col] - pd.to_numeric(result["EXPECTED_IMPACT"], errors="coerce")
+    ).round(1)
+
+    result["IMPACT_RANK"] = result[target_col].rank(ascending=False, method="min")
+    result["PPG_RANK"] = result["PTS"].rank(ascending=False, method="min")
+    result["RANK_GAP"] = (result["PPG_RANK"] - result["IMPACT_RANK"]).round(0)
+
+    return result
 
 
 def build_stage_summary(player):
@@ -263,7 +326,7 @@ st.markdown(
 with st.sidebar:
     page = st.radio(
         "Navigation",
-        ["Home", "Leaderboard", "Player Profile"],
+        ["Home", "Leaderboard", "Player Profile", "Comparison Tool", "Stage Explorer", "Underrated Players"],
     )
 
 if page == "Home":
@@ -390,16 +453,31 @@ if page == "Player Profile":
     selected_player = st.selectbox("Choose a player", player_names)
 
     player = ranked_df[ranked_df["PLAYER_NAME"] == selected_player].iloc[0]
+    total_players = len(ranked_df)
+    player_rank = int(player["RANK"])
+    percentile = (1 - (player_rank - 1) / total_players) * 100
+
+    if percentile >= 95:
+        tier = "Elite scoring impact"
+    elif percentile >= 85:
+        tier = "High-level scoring impact"
+    elif percentile >= 70:
+        tier = "Strong scoring contributor"
+    elif percentile >= 50:
+        tier = "Solid scoring contributor"
+    else:
+        tier = "Below league median scoring impact"
 
     st.subheader(f"{player['PLAYER_NAME']} - {player['TEAM_ABBREVIATION']}")
 
     metric_col1, metric_col2, metric_col3, metric_col4, metric_col5 = st.columns(5)
-    metric_col1.metric("Rank", f"#{int(player['RANK'])}")
-    metric_col2.metric("Impact", f"{player['TRUE_SCORING_IMPACT']:.1f}")
-    metric_col3.metric("PPG", f"{player['PTS']:.1f}")
-    metric_col4.metric("TS%", format_percent(player["TS_PCT"]))
-    metric_col5.metric("Usage", format_percent(player["USG_PCT"]))
+    metric_col1.metric("Rank", f"#{player_rank} of {total_players}")
+    metric_col2.metric("League Percentile", f"{percentile:.1f}%")
+    metric_col3.metric("Impact", f"{player['TRUE_SCORING_IMPACT']:.1f}")
+    metric_col4.metric("PPG", f"{player['PTS']:.1f}")
+    metric_col5.metric("TS%", format_percent(player["TS_PCT"]))
 
+    st.info(f"{tier} based on True Scoring Impact ranking.")
     st.markdown(build_stage_summary(player))
 
     stage_data = pd.DataFrame(
@@ -430,7 +508,7 @@ if page == "Player Profile":
                     ["Net Rating", f"{player['NET_RATING']:.1f}"],
                 ],
                 columns=["Metric", "Value"],
-            ),
+            ).astype({"Value": "string"}),
             hide_index=True,
             width="stretch",
         )
@@ -441,3 +519,408 @@ if page == "Player Profile":
         hide_index=True,
         width="stretch",
     )
+
+
+if page == "Comparison Tool":
+    st.title("Comparison Tool")
+    st.write("Compare 2 to 4 players and view team-level scoring profile averages.")
+
+    st.subheader("Player Comparison")
+
+    player_options = df["PLAYER_NAME"].sort_values().tolist()
+
+    selected_players = st.multiselect(
+        "Choose 2 to 4 players",
+        player_options,
+        default=player_options[:2],
+        max_selections=4,
+    )
+
+    if len(selected_players) < 2:
+        st.warning("Select at least 2 players to compare.")
+    else:
+        comparison_df = df[df["PLAYER_NAME"].isin(selected_players)].copy()
+
+        headline_cols = [
+            "PLAYER_NAME",
+            "TEAM_ABBREVIATION",
+            "PTS",
+            "TS_PCT",
+            "USG_PCT",
+            "TRUE_SCORING_IMPACT",
+        ]
+
+        st.dataframe(
+            color_rank_columns(
+                comparison_df[headline_cols].sort_values(
+                    "TRUE_SCORING_IMPACT",
+                    ascending=False,
+                ),
+                exclude_cols=["PLAYER_NAME", "TEAM_ABBREVIATION"],
+            ).format(
+                {
+                    "PTS": "{:.1f}",
+                    "TS_PCT": "{:.1%}",
+                    "USG_PCT": "{:.1%}",
+                    "TRUE_SCORING_IMPACT": "{:.1f}",
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+
+        stage_comparison = comparison_df[
+            ["PLAYER_NAME"] + list(STAGE_COLUMNS.values())
+        ].rename(
+            columns={
+                "PLAYER_NAME": "Player",
+                "VOLUME_SCORE": "Volume",
+                "EFFICIENCY_SCORE": "Efficiency",
+                "DIFFICULTY_ADJ_EFFICIENCY": "Shot Difficulty",
+                "CONTEXT_SCORE": "Game Context",
+                "INDEPENDENCE_SCORE": "Independence",
+            }
+        )
+
+        stage_chart_data = stage_comparison.set_index("Player")
+
+        st.subheader("Scoring Stage Comparison")
+        st.bar_chart(stage_chart_data, height=420)
+
+    st.divider()
+
+    st.subheader("Team Averages")
+
+    team_options = ["League Average"] + sorted(
+        df["TEAM_ABBREVIATION"].dropna().unique().tolist()
+    )
+
+    selected_team = st.selectbox("Choose a team", team_options)
+
+    if selected_team == "League Average":
+        team_df = df.copy()
+        team_label = "League Average"
+    else:
+        team_df = df[df["TEAM_ABBREVIATION"] == selected_team].copy()
+        team_label = selected_team
+
+    team_summary = {
+        "Players": len(team_df),
+        "Avg Impact": team_df["TRUE_SCORING_IMPACT"].mean(),
+        "Avg PPG": team_df["PTS"].mean(),
+        "Avg TS%": team_df["TS_PCT"].mean(),
+        "Avg Usage": team_df["USG_PCT"].mean(),
+    }
+
+    team_col1, team_col2, team_col3, team_col4, team_col5 = st.columns(5)
+    team_col1.metric("Players", f"{team_summary['Players']}")
+    team_col2.metric("Avg Impact", f"{team_summary['Avg Impact']:.1f}")
+    team_col3.metric("Avg PPG", f"{team_summary['Avg PPG']:.1f}")
+    team_col4.metric("Avg TS%", format_percent(team_summary["Avg TS%"]))
+    team_col5.metric("Avg Usage", format_percent(team_summary["Avg Usage"]))
+
+    team_stage_average = pd.DataFrame(
+        {
+            "Stage": list(STAGE_COLUMNS.keys()),
+            "Average Score": [
+                team_df[column].mean()
+                for column in STAGE_COLUMNS.values()
+            ],
+        }
+    ).set_index("Stage")
+
+    st.subheader(f"{team_label} Stage Averages")
+    st.bar_chart(team_stage_average, height=360)
+
+    if selected_team != "League Average":
+        st.subheader(f"{selected_team} Players")
+
+        team_players = team_df.sort_values(
+            "TRUE_SCORING_IMPACT",
+            ascending=False,
+        )
+
+        st.dataframe(
+            team_players[
+                [
+                    "PLAYER_NAME",
+                    "PTS",
+                    "TS_PCT",
+                    "USG_PCT",
+                    "TRUE_SCORING_IMPACT",
+                ]
+            ],
+            hide_index=True,
+            width="stretch",
+        )
+
+    st.divider()
+    st.subheader("Team Comparison")
+
+    selected_teams = st.multiselect(
+        "Choose 2 to 4 teams",
+        sorted(df["TEAM_ABBREVIATION"].dropna().unique().tolist()),
+        max_selections=4,
+    )
+
+    if len(selected_teams) < 2:
+        st.warning("Select at least 2 teams to compare.")
+    else:
+        team_comparison_rows = []
+        for team in selected_teams:
+            team_data = df[df["TEAM_ABBREVIATION"] == team]
+            row = {"Team": team}
+            for label, col in STAGE_COLUMNS.items():
+                row[label] = team_data[col].mean()
+            team_comparison_rows.append(row)
+
+        team_comparison_df = pd.DataFrame(team_comparison_rows).set_index("Team")
+
+        st.subheader("Stage Averages by Team")
+        st.bar_chart(team_comparison_df, height=420)
+
+        st.subheader("Summary Stats by Team")
+        summary_rows = []
+        for team in selected_teams:
+            team_data = df[df["TEAM_ABBREVIATION"] == team]
+            summary_rows.append({
+                "Team": team,
+                "Players": len(team_data),
+                "Avg Impact": round(team_data["TRUE_SCORING_IMPACT"].mean(), 1),
+                "Avg PPG": round(float(team_data["PTS"].mean()), 1),
+                "Avg TS%": round(team_data["TS_PCT"].mean() * 100, 1),
+                "Avg Usage": round(team_data["USG_PCT"].mean() * 100, 1),
+            })
+
+        st.dataframe(
+            color_rank_columns(
+                pd.DataFrame(summary_rows).set_index("Team").reset_index(),
+                exclude_cols=["Team"],
+            ).format(
+                {
+                    "Players": "{:.0f}",
+                    "Avg Impact": "{:.1f}",
+                    "Avg PPG": "{:.1f}",
+                    "Avg TS%": "{:.1f}%",
+                    "Avg Usage": "{:.1f}%",
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+
+
+if page == "Stage Explorer":
+    st.title("Stage Explorer")
+    st.write("Explore the top players in each scoring stage and how they rank on the leaderboard.")
+
+    stage_options = {
+        "Volume": "VOLUME_SCORE",
+        "Efficiency": "EFFICIENCY_SCORE",
+        "Shot Difficulty": "DIFFICULTY_ADJ_EFFICIENCY",
+        "Game Context": "CONTEXT_SCORE",
+        "Independence": "INDEPENDENCE_SCORE",
+        "True Scoring Impact": "TRUE_SCORING_IMPACT",
+    }
+
+    stage_descriptions = {
+        "Volume": "How much scoring load a player carries through points, shot attempts, and usage.",
+        "Efficiency": "How efficiently a player scores compared with expected scoring efficiency.",
+        "Shot Difficulty": "How well a player scores while taking harder shots.",
+        "Game Context": "How scoring holds up across clutch, home/away, rest, and game-state situations.",
+        "Independence": "How much a player's scoring impact holds up independent of team context.",
+        "True Scoring Impact": "The final weighted scoring impact score across all model stages.",
+    }
+
+    with st.sidebar:
+        st.header("Stage Explorer Filters")
+
+        selected_stage = st.selectbox(
+            "Stage",
+            list(stage_options.keys()),
+        )
+
+        selected_team = st.selectbox(
+            "Team",
+            ["All"] + sorted(df["TEAM_ABBREVIATION"].dropna().unique().tolist()),
+        )
+
+        selected_players = st.multiselect(
+            "Players",
+            df["PLAYER_NAME"].sort_values().tolist(),
+        )
+
+        min_ppg = st.slider(
+            "Minimum PPG",
+            0.0,
+            float(df["PTS"].max()),
+            10.0,
+            0.5,
+        )
+
+        min_games = st.slider(
+            "Minimum Games Played",
+            0,
+            int(df["GP"].max()),
+            20,
+            1,
+        )
+
+    stage_column = stage_options[selected_stage]
+
+    st.subheader(selected_stage)
+    st.info(stage_descriptions[selected_stage])
+
+    filtered = df.copy()
+
+    if selected_team != "All":
+        filtered = filtered[filtered["TEAM_ABBREVIATION"] == selected_team]
+
+    if selected_players:
+        filtered = filtered[filtered["PLAYER_NAME"].isin(selected_players)]
+
+    filtered = filtered[
+        (filtered["PTS"] >= min_ppg)
+        & (filtered["GP"] >= min_games)
+    ]
+
+    stage_ranked = filtered.sort_values(stage_column, ascending=False).copy()
+    stage_ranked.insert(0, "RANK", range(1, len(stage_ranked) + 1))
+
+    st.caption(f"{len(stage_ranked)} players match your filters")
+
+    chart_data = stage_ranked.head(15).set_index("PLAYER_NAME")[[stage_column]]
+
+    st.subheader(f"Top Players by {selected_stage}")
+    st.bar_chart(chart_data, height=420)
+
+    st.dataframe(
+        stage_ranked[
+            [
+                "RANK",
+                "PLAYER_NAME",
+                "TEAM_ABBREVIATION",
+                "PTS",
+                "GP",
+                "TS_PCT",
+                "USG_PCT",
+                stage_column,
+            ]
+        ],
+        hide_index=True,
+        width="stretch",
+    )
+
+if page == "Underrated Players":
+    st.title("Underrated Players")
+    st.write("Discover players with strong scoring impact but lower raw points per game.")
+
+    with st.sidebar:
+        st.header("Underrated Filters")
+
+        selected_team = st.selectbox(
+            "Team",
+            ["All"] + sorted(df["TEAM_ABBREVIATION"].dropna().unique().tolist()),
+            key="underrated_team",
+        )
+
+        max_ppg = st.slider(
+            "Maximum PPG",
+            0.0,
+            float(df["PTS"].max()),
+            18.0,
+            0.5,
+        )
+
+        min_impact = st.slider(
+            "Minimum Impact Score",
+            0.0,
+            100.0,
+            60.0,
+            1.0,
+        )
+
+        min_games = st.slider(
+            "Minimum Games Played",
+            0,
+            int(df["GP"].max()),
+            20,
+            1,
+            key="underrated_games",
+        )
+
+        min_minutes = st.slider(
+            "Minimum Minutes",
+            0.0,
+            float(df["MIN"].max()),
+            15.0,
+            0.5,
+            key="underrated_minutes",
+        )
+
+    underrated = add_underrated_scores(df)
+
+    if selected_team != "All":
+        underrated = underrated[underrated["TEAM_ABBREVIATION"] == selected_team]
+
+    underrated = underrated[
+        (underrated["PTS"] <= max_ppg)
+        & (underrated["TRUE_SCORING_IMPACT"] >= min_impact)
+        & (underrated["GP"] >= min_games)
+        & (underrated["MIN"] >= min_minutes)
+    ].copy()
+
+    underrated = underrated.sort_values(
+        "UNDERRATED_SCORE",
+        ascending=False,
+    ).copy()
+
+    underrated.insert(0, "RANK", range(1, len(underrated) + 1))
+
+    st.info(
+        "This page uses regression to find players whose actual scoring impact is higher than expected from their PPG, usage, and minutes."
+    )
+
+    st.caption(f"{len(underrated)} players match your filters")
+
+    if underrated.empty:
+        st.warning("No players match the current filters. Try lowering the impact threshold or raising maximum PPG.")
+    else:
+        top_underrated = underrated.head(15).set_index("PLAYER_NAME")[["UNDERRATED_SCORE"]]
+
+        st.subheader("Top Underrated Scoring Profiles")
+        st.bar_chart(top_underrated, height=420)
+
+        underrated_table = underrated[
+            [
+                "RANK",
+                "PLAYER_NAME",
+                "TEAM_ABBREVIATION",
+                "PTS",
+                "MIN",
+                "GP",
+                "TS_PCT",
+                "USG_PCT",
+                "TRUE_SCORING_IMPACT",
+                "EXPECTED_IMPACT",
+                "RANK_GAP",
+                "UNDERRATED_SCORE",
+            ]
+        ]
+
+        st.dataframe(
+            underrated_table.style.format(
+                {
+                    "PTS": "{:.1f}",
+                    "MIN": "{:.1f}",
+                    "TS_PCT": "{:.1%}",
+                    "USG_PCT": "{:.1%}",
+                    "TRUE_SCORING_IMPACT": "{:.1f}",
+                    "EXPECTED_IMPACT": "{:.1f}",
+                    "RANK_GAP": "{:.0f}",
+                    "UNDERRATED_SCORE": "{:.1f}",
+                }
+            ),
+            hide_index=True,
+            width="stretch",
+        )
