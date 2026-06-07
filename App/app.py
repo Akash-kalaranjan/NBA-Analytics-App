@@ -316,7 +316,7 @@ st.markdown(
 
             .link-pill {
                 font-size: 1.15rem;
-            }
+            }   
         }
     </style>
     """,
@@ -361,6 +361,35 @@ if page == "Home":
     col1, col2 = st.columns(2)
     col1.metric("Players", len(df))
     col2.metric("Teams", df["TEAM_ABBREVIATION"].nunique())
+
+    st.divider()
+    st.subheader("🏀 Today's Debate")
+
+    top_50 = df.nlargest(50, "TRUE_SCORING_IMPACT")
+    debate_players = top_50.sample(2, random_state=pd.Timestamp.now().toordinal()).reset_index(drop=True)
+
+    p1 = debate_players.iloc[0]
+    p2 = debate_players.iloc[1]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"### {p1['PLAYER_NAME']}")
+        st.caption(p1['TEAM_ABBREVIATION'])
+        st.metric("True Impact", f"{p1['TRUE_SCORING_IMPACT']:.1f}")
+        st.metric("PPG", f"{p1['PTS']:.1f}")
+        st.metric("TS%", format_percent(p1['TS_PCT']))
+        st.metric("Usage", format_percent(p1['USG_PCT']))
+
+    with col2:
+        st.markdown(f"### {p2['PLAYER_NAME']}")
+        st.caption(p2['TEAM_ABBREVIATION'])
+        st.metric("True Impact", f"{p2['TRUE_SCORING_IMPACT']:.1f}")
+        st.metric("PPG", f"{p2['PTS']:.1f}")
+        st.metric("TS%", format_percent(p2['TS_PCT']))
+        st.metric("Usage", format_percent(p2['USG_PCT']))
+
+    st.divider()
 
     st.subheader("Top Scorers by True Scoring Impact")
 

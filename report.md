@@ -24,45 +24,89 @@ OFF_RATING has relatively weak correlations with most individual stats, suggesti
 
 TS_PCT and USG_PCT have virtually zero correlation (r = 0.0), confirming that efficiency and usage have no linear relationship at the league level. Elite players who maintain high efficiency at high usage are genuinely beating the expected tradeoff.
 
-### Limitations — Stage 1
-Volume score weights are manually assigned based on domain knowledge. A more rigorous approach would derive weights statistically using PCA or regression analysis. This is a planned improvement for future iterations.
 
-## Stage 1 — Volume Score
-Luka Dončić ranks #1 in volume score (97.3), consistent with his league leading usage rate and shot attempts. Notably Jokić ranks lower (75.4) despite scoring 27.7 PPG, suggesting he generates 
-points efficiently without requiring dominant possession usage. This sets up Stage 2 where efficiency is rewarded.
-
-## Stage 2 — Efficiency Model
+### Stage 1 — Volume Score
 
 ### Goal
-Measure how efficiently a player scores relative to their expected efficiency given their usage rate and shot profile.
+We aim to capture how much scoring opportunity a player receives. To find how well a player scores, it’s important to understand and contextualize how much they are asked to score. Hence, Volume is the foundation of the model.
+
+
+### What We Measure
+We incorporate 5 different features that collectively reflect scoring opportunity:
+Usage Rate (USG%) - proportion of team plays that are used by the player strictly when they’re on the floor
+Field Goal Attempts (FGA) - this is simply the raw shot volume per game.
+Free Throw Attempts (FTA) - the ability to draw fouls and score at the free throw line
+Minutes (Min) - the duration/length in minutes when the player is on the floor
+Games Played (GP) - availability and durability across the season. How many games was the player able to play?
+
 
 ### Formula
+Each feature is scaled to a 0–1 range using MinMax scaling, then combined as a weighted average:
 
-**Feature Engineering:**
-- FG3A_RATE = FG3A / FGA (proportion of shots that are 3 pointers)
+
+$$\text{Volume Score} = 0.35 \cdot USG\% + 0.30 \cdot FGA + 0.15 \cdot FTA + 0.15 \cdot MIN + 0.05 \cdot GP$$
+
+
+The final score is scaled to 0–100.
+
+
+### Results
+Luka Dončić leads with a 97.3 volume score, consistent with his league-high usage and FGA. Giannis (80.7) and Jokić (75.4) rank lower than their PPG would suggest due to fewer shot attempts, reflecting their efficiency-first offensive roles. Tyrese Maxey's high minutes (38.0) boost his score despite lower usage than peers.
+
+
+### Limitations
+Volume alone says nothing about efficiency; for instance, a player could shoot 25 times and make 8. This could just be a sign of role inflation or poor shot quality. Also, FGA and USG% overlap significantly, introducing some redundancy; in other words, the features we combine to create this volume model are not independent variables. In fact, based on the correlation heatmap, FGA and USG% correlate with r = 0.87, meaning both features capture heavily overlapping information and the volume score partially double-counts shot attempts. Finally, A lower weighting of Games played may be questionable, as a player who misses 30 games may receive the same score as a healthy player despite the lower sample size (an unusually high volume score may regress to the mean with a larger sample size).
+
+
+### Future Improvements
+I will aim to weight FGA by shot quality. For instance, a roll man who plays off of playmaking guards gravity may have a high number of shot attempts, but that doesn’t inherently mean that they have a lot of responsibility and respect as a scorer like the volume score may suggest. Also, it’s best to introduce an availability adjustment that more heavily penalizes missed games for the reasons said under the limitations section.
+
+### Stage 2 — Efficiency Model
+
+
+### Goal
+We measure how efficiently a player scores relative to their expected efficiency given their usage rate and shot profile. Essentially, given the scoring opportunities a player has, we aim to answer the question: how well do they minimize wasted opportunities?
+
+
+### What We Measure 
+We incorporate separate statistics like FG3A, being the proportion of their field goal attempts that are strictly 3-point attempts, or FTA rate, being the free throw attempts per field goal attempt. Furthermore, we use those stats to find players' expected true shooting percentage, which essentially measures how efficient they should be given their shot diet and role. We then use that to get their “true shooting above expected”, which is the difference between their true shooting percentage and expected true shooting percentage, which finally gets us the Efficiency Score model as mentioned below:
+**Feature Engineering:** 
+- FG3A_RATE = FG3A / FGA (proportion of shots that are 3-pointers)
 - FTA_RATE = FTA / FGA (free throw attempts per shot attempt)
 
-**Expected TS% (Linear Regression):**
+
+**Expected TS% (Linear Regression):** 
 - EXPECTED_TS = (β1 × USG_PCT) + (β2 × FG3A_RATE) + (β3 × FTA_RATE) + intercept
 - β1, β2, β3 are coefficients learned from all 384 players
+
 
 **Efficiency Above Expectation:**
 - TS_ABOVE_EXPECTED = Actual TS% - EXPECTED_TS
 
+
+### Formula
+
+
 **Efficiency Score:**
 - EFFICIENCY_SCORE = (TS_PCT_SCALED × 0.60 + TS_ABOVE_EXPECTED_SCALED × 0.40) × 100
 
+
 ### Results
+The top of the efficiency leaderboard is dominated by big men and catch-and-shoot specialists, which reveals an important limitation of efficiency metrics in isolation. Jakob Poeltl (80.3) and Deandre Ayton (75.6) lead the list despite averaging only 10.7 and 12.5 PPG, respectively. Both benefit from high TS% on low usage, because they rarely take difficult shots and score primarily on assisted rim finishes, which inflates efficiency without reflecting true scoring creation. Nikola Jokić (71.2) is essentially the standout exception, as he maintains elite efficiency (TS% = 0.670) at a usage rate of 28.9% and 27.7 PPG. Beating expected TS% by 7.0% at that volume is genuinely elite. Shai Gilgeous-Alexander (69.2) ranks 10th despite leading the league in PPG (31.1) and carrying a 32.3% usage rate. His TS% of 0.665 is 6.1% above expected; that is exceptional given the volume and difficulty of shots he takes. 
+
+
+Key takeaway: raw efficiency rewards role players who operate in favorable conditions. This is exactly why Stage 3 (Shot Difficulty) is necessary to adjust for the context in which efficiency is generated. A big man finishing assisted lobs and a ball handler creating off the dribble at 30% usage are not comparable on efficiency alone. 
+
+
 R² = 0.20 — our model explains 20% of the variation in TS%. The remaining 80% is driven by factors not yet captured and shot difficulty, defender distance, and shot location are examples of such, which will be addressed in Stage 3.
+
 
 ### Limitation
 Big men dominate efficiency rankings due to naturally high percentage shots near the rim. Shot difficulty adjustment in Stage 3 will correct this bias.
 
-### Future Improvement
-Expected TS% should incorporate defender distance, assisted vs unassisted FGA, shot distance, and shot  zone for a more accurate baseline. This is addressed in Stage 3.
 
-### Future Improvement — Stage 3
-Defender distance data available via PlayerDashPtShots endpoint. Adding this feature will improve shot difficulty accuracy. Planned for next iteration.
+### Future Improvement
+Expected TS% should incorporate defender distance, assisted vs unassisted FGA, shot distance, and shot zone for a more accurate baseline. This is addressed in Stage 3.
 
 ### Stage 3 - Shot Difficulty
 Problem: Raw efficiency stats like TS% treat all shots equally. A Devin Booker pull-up fadeaway from 16 feet and a Mark Williams catch-and-finish dunk both count the same. Stage 3 fixes that by measuring how hard a player's shot diet actually is, so it contextualizes the efficiency a player is scoring on relative to their role in the offense.
@@ -213,10 +257,10 @@ On/off splits are among the most reliable advanced metrics available because the
 However, lineup combinations introduce confounding, as a player's on/off numbers are influenced by which teammates they share the court with and which lineups they face. A star who plays exclusively with other stars will have inflated off-court numbers because their absence coincides with weaker lineups taking the floor.
 Small market and rebuilding teams systematically produce larger on/off swings because their supporting cast is weaker. This inflates independence scores for players on bad teams and slightly deflates them for players on deep rosters like Boston or Denver.
 
-Final Model Interpretation
+### Final Model Interpretation
 As the previous 5 stages measure separate aspects of scoring that show the true value of a specific side of scoring, whether that be volume, efficiency, shot difficulty, situational context, or team independence, the TRUE_SCORING_IMPACT score answers a single question: "If you needed someone to score for your team in the most complete and valuable way possible, who would you pick?" This composite metric blends all 5 stages into a single score, rewarding players who demonstrate sustained scoring value across multiple dimensions rather than excelling in just one.
 
-What we measure
+What we measure:
 The TRUE_SCORING_IMPACT score is a weighted composite of all 5 stages:
 VOLUME_SCORE (Stage 1) — How much scoring burden the player carries. Rewards players who handle high usage, attempt more shots, and play heavy minutes.
 EFFICIENCY_SCORE (Stage 2) — How efficiently the player scores relative to what is expected given their role. Rewards players who beat their expected TS% at high usage.
