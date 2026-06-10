@@ -1,0 +1,31 @@
+Build started at 2026-06-09_11-41-52
+Project dir: c:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App
+============================================================
+
+STDOUT:
+
+==================================================
+  BUILDING: Regular Season
+==================================================
+
+Fetching player stats (Regular Season)...
+
+
+STDERR:
+Traceback (most recent call last):
+  File "c:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 129, in <module>
+    build("Regular Season")
+  File "c:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 117, in build
+    fetch_player_stats(season_type)
+  File "c:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 72, in fetch_player_stats
+    print(f"  Saved {len(df)} players \u2192 {path.name}")
+  File "C:\Users\akash\AppData\Local\Programs\Python\Python311\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in position 20: character maps to <undefined>
+
+
+============================================================
+Build finished at 2026-06-09 11:42:01
+Exit code: 1
+Build failed
