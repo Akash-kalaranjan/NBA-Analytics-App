@@ -31,5 +31,3 @@ This project showcases a full end-to-end data science workflow, as instead of ta
 
 ### More Links
 [Instagram](https://www.instagram.com/akash_kalaranjan/) | [Linkedin](https://www.linkedin.com/in/akash-kalaranjan-9aa895255/)
-
-a
