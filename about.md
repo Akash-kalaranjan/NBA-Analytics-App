@@ -27,4 +27,9 @@ This project showcases a full end-to-end data science workflow, as instead of ta
 * **Regression Modelling**: OLS regression to estimate expected scoring efficiency and isolate above-expectation performance
 * **Web Development**: Interactive Streamlit dashboard with player profiles, leaderboards, comparison tools, and daily debate features
 
-[View the full technical report](#) | [GitHub Repository](https://github.com/Akash-kalaranjan/NBA-Analytics-App)
+[View the full technical report](https://github.com/Akash-kalaranjan/NBA-Analytics-App/blob/main/report.md) | [GitHub Repository](https://github.com/Akash-kalaranjan/NBA-Analytics-App)
+
+### More Links
+[Instagram](https://www.instagram.com/akash_kalaranjan/) | [Linkedin](https://www.linkedin.com/in/akash-kalaranjan-9aa895255/)
+
+a
