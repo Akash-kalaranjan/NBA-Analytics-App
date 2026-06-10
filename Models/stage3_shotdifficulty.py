@@ -3,11 +3,12 @@ import numpy as np
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "Data"
 
-def load_data():
-    efficiency_df = pd.read_csv(DATA_DIR / "players_with_efficiency.csv")
-    shot_df = pd.read_csv(DATA_DIR / "shot_quality_raw.csv")
+def load_data(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    efficiency_df = pd.read_csv(DATA_DIR / f"players_with_efficiency{suffix}.csv")
+    shot_df = pd.read_csv(DATA_DIR / f"shot_quality_raw{suffix}.csv")
     efficiency_df = efficiency_df[efficiency_df["PLAYER_NAME"] != "Deni Avdija"].reset_index(drop=True)
     print(f"Players: {efficiency_df.shape[0]}")
     print(f"Shots: {shot_df.shape[0]}")
@@ -16,38 +17,32 @@ def load_data():
 def aggregate_shot_difficulty(shot_df):
     print("\nAggregating shot data by player...")
 
-    # Pull-up / self created shots
     pullup_keywords = ["Pull-Up", "Pullup", "Step Back", "Turnaround", "Fadeaway"]
     shot_df["IS_PULLUP"] = shot_df["ACTION_TYPE"].str.contains(
         "|".join(pullup_keywords), case=False, na=False
     ).astype(int)
 
-    # Shot clock pressure
     shot_df["SHOT_CLOCK_SECONDS"] = (
         shot_df["MINUTES_REMAINING"] * 60 + shot_df["SECONDS_REMAINING"]
     )
     shot_df["IS_LATE_CLOCK"] = (shot_df["SHOT_CLOCK_SECONDS"] <= 4).astype(int)
 
-    # Mid-range
     shot_df["IS_MIDRANGE"] = (
         shot_df["SHOT_ZONE_BASIC"] == "Mid-Range"
     ).astype(int)
 
-    # Hard rim shots — player created (driving, cutting)
     hard_rim_keywords = ["Driving", "Cutting"]
     shot_df["IS_RESTRICTED_HARD"] = (
         (shot_df["SHOT_ZONE_BASIC"] == "Restricted Area") &
         (shot_df["ACTION_TYPE"].str.contains("|".join(hard_rim_keywords), case=False, na=False))
     ).astype(int)
 
-    # Easy rim shots — assisted/passive (alley oop, putback, tip, plain layup/dunk)
     easy_rim_keywords = ["Alley Oop", "Putback", "Tip Layup", "Tip Dunk"]
     shot_df["IS_RESTRICTED_EASY"] = (
         (shot_df["SHOT_ZONE_BASIC"] == "Restricted Area") &
         (shot_df["ACTION_TYPE"].str.contains("|".join(easy_rim_keywords), case=False, na=False))
     ).astype(int)
 
-    # Aggregate per player
     agg = shot_df.groupby("PLAYER_ID").agg(
         AVG_SHOT_DISTANCE=("SHOT_DISTANCE", "mean"),
         PCT_PULLUP=("IS_PULLUP", "mean"),
@@ -62,44 +57,36 @@ def aggregate_shot_difficulty(shot_df):
     return agg
 
 def compute_shot_difficulty(efficiency_df, shot_agg):
-    """
-    Build SHOT_DIFFICULTY_SCORE from aggregated features.
-    Higher = harder shots on average.
-    """
     df = pd.merge(
-    efficiency_df,
-    shot_agg[["PLAYER_ID", "AVG_SHOT_DISTANCE", "PCT_PULLUP",
-          "PCT_LATE_CLOCK", "PCT_MIDRANGE", "PCT_RESTRICTED_HARD",
-          "PCT_RESTRICTED_EASY", "TOTAL_SHOTS"]],
-    on="PLAYER_ID",
-    how="left"
-)
+        efficiency_df,
+        shot_agg[["PLAYER_ID", "AVG_SHOT_DISTANCE", "PCT_PULLUP",
+                  "PCT_LATE_CLOCK", "PCT_MIDRANGE", "PCT_RESTRICTED_HARD",
+                  "PCT_RESTRICTED_EASY", "TOTAL_SHOTS"]],
+        on="PLAYER_ID",
+        how="left"
+    )
 
     features = {
-        "AVG_SHOT_DISTANCE": 0.25,   # farther = harder
-        "PCT_PULLUP":        0.30,   # self created = harder
-        "PCT_MIDRANGE":      0.20,   # mid range = hardest shot in NBA
-        "PCT_LATE_CLOCK":    0.10,   # rushed shots = harder
-        "PCT_RESTRICTED_EASY":   -0.10,   # rim shots = easier (inverted)
-        "PCT_RESTRICTED_HARD": 0.15,  # tough rim shots = harder
+        "AVG_SHOT_DISTANCE":   0.25,
+        "PCT_PULLUP":          0.30,
+        "PCT_MIDRANGE":        0.20,
+        "PCT_LATE_CLOCK":      0.10,
+        "PCT_RESTRICTED_EASY": -0.10,
+        "PCT_RESTRICTED_HARD": 0.15,
     }
 
-    # Fill missing values
     for col in features:
         df[col] = df[col].fillna(df[col].median())
 
-    # Scale to 0-1
     scaler = MinMaxScaler()
     scaled = scaler.fit_transform(df[list(features.keys())])
     scaled_df = pd.DataFrame(scaled, columns=list(features.keys()))
 
-    # Weighted sum
     df["SHOT_DIFFICULTY_SCORE"] = sum(
         scaled_df[col] * weight
         for col, weight in features.items()
     )
 
-    # Scale to 0-100
     d = df["SHOT_DIFFICULTY_SCORE"]
     df["SHOT_DIFFICULTY_SCORE"] = ((d - d.min()) / (d.max() - d.min()) * 100).round(1)
 
@@ -107,10 +94,6 @@ def compute_shot_difficulty(efficiency_df, shot_agg):
     return df
 
 def compute_adjusted_efficiency(df):
-    """
-    Adjust efficiency score by shot difficulty.
-    Hard shots + efficient = truly elite scorer.
-    """
     scaler = MinMaxScaler()
 
     df["TS_X_DIFFICULTY"] = df["TS_PCT"] * (df["SHOT_DIFFICULTY_SCORE"] / 100)
@@ -133,23 +116,25 @@ def print_results(df):
         ["PLAYER_NAME", "SHOT_DIFFICULTY_SCORE", "AVG_SHOT_DISTANCE",
          "PCT_PULLUP", "PCT_MIDRANGE", "TS_PCT", "PTS"]
     ].round(3)
-    print(hard.to_string(index=False))
+    print(hard.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
     print("\n--- Top 15 Difficulty Adjusted Efficiency (10+ PPG) ---")
     adj = qualified.nlargest(15, "DIFFICULTY_ADJ_EFFICIENCY")[
         ["PLAYER_NAME", "DIFFICULTY_ADJ_EFFICIENCY", "EFFICIENCY_SCORE",
          "SHOT_DIFFICULTY_SCORE", "TS_PCT", "PTS"]
     ].round(3)
-    print(adj.to_string(index=False))
+    print(adj.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
-def main():
-    efficiency_df, shot_df = load_data()
+def main(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    efficiency_df, shot_df = load_data(season_type)
     shot_agg = aggregate_shot_difficulty(shot_df)
     df = compute_shot_difficulty(efficiency_df, shot_agg)
     df = compute_adjusted_efficiency(df)
-    df.to_csv(DATA_DIR / "players_with_difficulty.csv", index=False)
+    out_path = DATA_DIR / f"players_with_difficulty{suffix}.csv"
+    df.to_csv(out_path, index=False)
     print_results(df)
-    print("\n Stage 3 complete — saved to data/players_with_difficulty.csv")
+    print(f"\n Stage 3 complete — saved to {out_path.name}")
 
 if __name__ == "__main__":
     main()

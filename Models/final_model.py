@@ -3,7 +3,7 @@ import numpy as np
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "Data"
 
 WEIGHTS = {
     "VOLUME_SCORE":              0.275,
@@ -13,8 +13,9 @@ WEIGHTS = {
     "INDEPENDENCE_SCORE":        0.075,
 }
 
-def load_data():
-    df = pd.read_csv(DATA_DIR / "players_with_independence.csv")
+def load_data(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    df = pd.read_csv(DATA_DIR / f"players_with_independence{suffix}.csv")
     print(f"Loaded: {len(df)} players, {df.shape[1]} columns")
     return df
 
@@ -53,20 +54,22 @@ def print_results(df):
          "EFFICIENCY_SCORE", "DIFFICULTY_ADJ_EFFICIENCY",
          "CONTEXT_SCORE", "INDEPENDENCE_SCORE", "PTS"]
     ].round(1)
-    print(top.to_string(index=False))
+    print(top.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
     print("\n--- Bottom 10 (10+ PPG) ---")
     bottom = qualified.nsmallest(10, "TRUE_SCORING_IMPACT")[
         ["PLAYER_NAME", "TRUE_SCORING_IMPACT", "PTS"]
     ].round(1)
-    print(bottom.to_string(index=False))
+    print(bottom.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
-def main():
-    df = load_data()
+def main(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    df = load_data(season_type)
     df = compute_final_score(df)
-    df.to_csv(DATA_DIR / "players_final_scores.csv", index=False)
+    out_path = DATA_DIR / f"players_final_scores{suffix}.csv"
+    df.to_csv(out_path, index=False)
     print_results(df)
-    print("\n Final Model complete — saved to data/players_final_scores.csv")
+    print(f"\n Final Model complete — saved to {out_path.name}")
 
 if __name__ == "__main__":
     main()

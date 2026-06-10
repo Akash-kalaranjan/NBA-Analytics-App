@@ -3,11 +3,12 @@ import numpy as np
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "Data"
 
-def load_data():
-    players_df = pd.read_csv(DATA_DIR / "players_with_context.csv")
-    onoff_df = pd.read_csv(DATA_DIR / "on_off_splits.csv")
+def load_data(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    players_df = pd.read_csv(DATA_DIR / f"players_with_context{suffix}.csv")
+    onoff_df = pd.read_csv(DATA_DIR / f"on_off_splits{suffix}.csv")
     players_df = players_df[players_df["PLAYER_NAME"] != "Deni Avdija"].reset_index(drop=True)
     print(f"Players: {len(players_df)}")
     print(f"On/off rows: {len(onoff_df)}")
@@ -105,22 +106,24 @@ def print_results(df):
         ["PLAYER_NAME", "INDEPENDENCE_SCORE", "NET_RATING_IMPACT",
          "OFF_RATING_IMPACT", "NET_RATING_ON", "PTS"]
     ].round(2)
-    print(top.to_string(index=False))
+    print(top.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
     print("\n--- Biggest Team Lifters (NET_RATING_IMPACT) ---")
     lifters = qualified.nlargest(15, "NET_RATING_IMPACT")[
         ["PLAYER_NAME", "NET_RATING_IMPACT", "NET_RATING_ON",
          "NET_RATING_OFF", "INDEPENDENCE_SCORE", "PTS"]
     ].round(2)
-    print(lifters.to_string(index=False))
+    print(lifters.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
-def main():
-    players_df, onoff_df = load_data()
+def main(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    players_df, onoff_df = load_data(season_type)
     impact_df = compute_team_independence(players_df, onoff_df)
     df = compute_independence_score(players_df, impact_df)
-    df.to_csv(DATA_DIR / "players_with_independence.csv", index=False)
+    out_path = DATA_DIR / f"players_with_independence{suffix}.csv"
+    df.to_csv(out_path, index=False)
     print_results(df)
-    print("\n Stage 5 complete — saved to data/players_with_independence.csv")
+    print(f"\n Stage 5 complete — saved to {out_path.name}")
 
 if __name__ == "__main__":
     main()

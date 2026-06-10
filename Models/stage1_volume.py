@@ -3,27 +3,31 @@ import numpy as np
 from pathlib import Path
 from sklearn.preprocessing import MinMaxScaler
 
-DATA_DIR = Path(__file__).parent.parent / "data"
+DATA_DIR = Path(__file__).parent.parent / "Data"
 
-def load_data():
-    path = DATA_DIR / "players_final.csv"
+def load_data(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    path = DATA_DIR / f"players_final{suffix}.csv"
     print(f"Reading from: {path.resolve()}")
     df = pd.read_csv(path)
     df = df[df["PLAYER_NAME"] != "Deni Avdija"].reset_index(drop=True)
+
+    # Apply mins/games filter based on season type (data pre-filtered from build_dataset.py)
+    if season_type == "Regular Season":
+        df = df[(df["GP"] >= 20) & (df["MIN"] >= 12)].reset_index(drop=True)
+    else:
+        df = df[(df["GP"] >= 3) & (df["MIN"] >= 5)].reset_index(drop=True)
+
     print(f"Loaded: {df.shape[0]} players, {df.shape[1]} columns")
-    print(df.nlargest(3, 'FGA')[['PLAYER_NAME','FGA']].to_string())
     return df
 
 def compute_volume(df):
-    # Features that take in scoring opportunity
     features = ["USG_PCT", "FGA", "FTA", "MIN", "GP"]
 
-    # Scale each feature to 0-1 range
     scaler = MinMaxScaler()
     scaled = scaler.fit_transform(df[features])
     scaled_df = pd.DataFrame(scaled, columns=features)
 
-    # Weighted average (Emphasize usage and field goal attempts)
     weights = {
         "USG_PCT": 0.35,
         "FGA":     0.30,
@@ -33,11 +37,10 @@ def compute_volume(df):
     }
 
     df["VOLUME_SCORE"] = sum(
-        scaled_df[col] * weight 
+        scaled_df[col] * weight
         for col, weight in weights.items()
     )
-    
-    # Scale final score to 0-100
+
     df["VOLUME_SCORE"] = (df["VOLUME_SCORE"] * 100).round(1)
     return df
 
@@ -46,14 +49,16 @@ def print_results(df):
         ["PLAYER_NAME", "VOLUME_SCORE", "USG_PCT", "FGA", "MIN", "PTS"]
     ]
     print("\n--- Top 15 by Volume Score ---")
-    print(top.to_string(index=False))
+    print(top.to_string(index=False).encode("cp1252", errors="ignore").decode("cp1252"))
 
-def main():
-    df = load_data()
+def main(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    df = load_data(season_type)
     df = compute_volume(df)
-    df.to_csv(DATA_DIR / "players_with_volume.csv", index=False)
+    out_path = DATA_DIR / f"players_with_volume{suffix}.csv"
+    df.to_csv(out_path, index=False)
     print_results(df)
-    print("\n Stage 1 complete — saved to data/players_with_volume.csv")
+    print(f"\n Stage 1 complete — saved to {out_path.name}")
 
 if __name__ == "__main__":
     main()

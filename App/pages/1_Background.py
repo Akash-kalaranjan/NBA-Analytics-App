@@ -121,5 +121,8 @@ with tab3:
 
 with tab4:
     st.subheader("About")
-    
-
+    about_path = BASE_DIR / "about.md"
+    if about_path.exists():
+        st.markdown(about_path.read_text(encoding="utf-8"))
+    else:
+        st.warning("about.md not found.")

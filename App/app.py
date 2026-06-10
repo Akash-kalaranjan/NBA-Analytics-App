@@ -1,13 +1,17 @@
 import base64
+import random
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+from datetime import date
+import subprocess
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-DATA_PATH = BASE_DIR / "Data" / "players_final_scores.csv"
+DATA_PATH_REG = BASE_DIR / "Data" / "players_final_scores.csv"
+DATA_PATH_PLAYOFFS = BASE_DIR / "Data" / "players_final_scores_playoffs.csv"
 HERO_VIDEO_PATH = BASE_DIR / "App" / "assets" / "hero-basketball.mp4.mp4"
 
 
@@ -16,10 +20,28 @@ st.set_page_config(
     layout="wide",
 )
 
+@st.cache_data(ttl=86400)
+def load_data(season_type="Regular Season"):
+    suffix = "_playoffs" if season_type == "Playoffs" else ""
+    path = BASE_DIR / "Data" / f"players_final_scores{suffix}.csv"
+    build_script = BASE_DIR / "build_dataset.py"
 
-@st.cache_data
-def load_data():
-    return pd.read_csv(DATA_PATH)
+    # Rebuild if file is missing or from a previous day
+    needs_rebuild = (
+        not path.exists() or
+        date.fromtimestamp(path.stat().st_mtime) < date.today()
+    )
+
+    if needs_rebuild:
+            subprocess.run(["python", str(build_script)], check=True)
+
+    if season_type == "Playoffs":
+        if path.exists():
+            return pd.read_csv(path)
+        st.warning("Playoff data not available yet — showing regular season.")
+        return pd.read_csv(BASE_DIR / "Data" / "players_final_scores.csv")
+
+    return pd.read_csv(path)
 
 
 @st.cache_data
@@ -31,8 +53,14 @@ def load_hero_video():
     return f"data:video/mp4;base64,{encoded_video}"
 
 
-df = load_data()
-hero_video = load_hero_video()
+hero_video = load_hero_video()  # doesn't need season_type, fine up here
+
+with st.sidebar:
+    season_label = st.radio("Season Type", ["Regular Season (2025-26)", "Playoffs (2025-26)"])
+    season_type = "Playoffs" if season_label.startswith("Playoffs") else "Regular Season"
+
+with st.spinner("Refreshing data from NBA API..."):
+    df = load_data(season_type)
 
 LINKEDIN_URL = "https://www.linkedin.com/in/akash-kalaranjan-9aa895255/"
 YOUTUBE_URL = "https://www.youtube.com/channel/UC4UWs1H62Ao3QsYa4xEF-jA/"
@@ -327,6 +355,7 @@ with st.sidebar:
     page = st.radio(
         "Navigation",
         ["Home", "Leaderboard", "Player Profile", "Comparison Tool", "Stage Explorer", "Underrated Players"],
+        key="nav_radio",
     )
 
 if page == "Home":
@@ -365,11 +394,24 @@ if page == "Home":
     st.divider()
     st.subheader("🏀 Today's Debate")
 
-    top_50 = df.nlargest(50, "TRUE_SCORING_IMPACT")
-    debate_players = top_50.sample(2, random_state=pd.Timestamp.now().toordinal()).reset_index(drop=True)
+    top_150 = df.nlargest(150, "TRUE_SCORING_IMPACT")
 
-    p1 = debate_players.iloc[0]
-    p2 = debate_players.iloc[1]
+    valid_pairs = [
+        (i, j)
+        for i in range(len(top_150))
+        for j in range(i + 1, len(top_150))
+        if abs(top_150.iloc[i]["TRUE_SCORING_IMPACT"] - top_150.iloc[j]["TRUE_SCORING_IMPACT"]) <= 7
+    ]
+
+    if valid_pairs:
+        rng = random.Random(pd.Timestamp.now().toordinal())
+        i, j = rng.choice(valid_pairs)
+        p1 = top_150.iloc[i]
+        p2 = top_150.iloc[j]
+    else:
+        debate_players = top_150.sample(2, random_state=pd.Timestamp.now().toordinal()).reset_index(drop=True)
+        p1 = debate_players.iloc[0]
+        p2 = debate_players.iloc[1]
 
     col1, col2 = st.columns(2)
 
