@@ -4,3 +4,4 @@ numpy
 scikit-learn
 plotly
 nba_api
+requests

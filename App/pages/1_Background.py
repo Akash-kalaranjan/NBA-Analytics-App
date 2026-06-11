@@ -20,7 +20,7 @@ df = load_data()
 
 st.title("Background")
 
-tab1, tab2, tab3, tab4 = st.tabs(["EDA Graphs", "Report", "Model Formulas", "About"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["EDA Graphs", "Report", "Model Formulas", "About", "Feedback"])
 
 with tab1:
     st.subheader("EDA Graphs")
@@ -126,3 +126,28 @@ with tab4:
         st.markdown(about_path.read_text(encoding="utf-8"))
     else:
         st.warning("about.md not found.")
+
+
+with tab5:
+    st.subheader("Feedback")
+    st.markdown("Send me any honest feedback, and please give any inputs on any updates you would like to see.")
+
+    with st.form("feedback_form"):
+        name = st.text_input("Name (optional)")
+        email = st.text_input("Email (optional)")
+        message = st.text_area("Your feedback", height=150)
+        submitted = st.form_submit_button("Send")
+
+    if submitted:
+        if message.strip() == "":
+            st.warning("Please write something before submitting.")
+        else:
+            import requests
+            response = requests.post(
+                "https://formspree.io/f/xqeodpdv",
+                data={"name": name, "email": email, "message": message},
+            )
+            if response.status_code == 200:
+                st.success("Thanks for the feedback!")
+            else:
+                st.error("Something went wrong. Please try again.")
