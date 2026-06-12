@@ -151,7 +151,7 @@ def init_draft_state(pool: pd.DataFrame):
     N_TEAMS = 8
     N_ROUNDS = 8
     USER_TEAM_IDX = 0
-    seed = int(pd.Timestamp.now().toordinal())
+    seed = int(pd.Timestamp.now().timestamp() * 1000)
 
     st.session_state["draft_pool"] = pool.copy()
     st.session_state["available"] = pool.copy()
