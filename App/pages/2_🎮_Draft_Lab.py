@@ -357,11 +357,13 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
     season_stats = []
     for t, roster in all_teams.items():
         for p in roster:
-            est_games = round(p["GP"] * (1 - p["INJURY_PROB"] / 100))  # estimated games played in sim
+            est_games = round(p["GP"] * (1 - p["INJURY_PROB"] / 100))
+            # Simulated PPG: normal draw around real PPG, scaled by availability, clamped at 0
+            sim_ppg = max(0.0, round(rng.normal(loc=p["PPG"], scale=2.5) * (1 - p["INJURY_PROB"] / 100), 1))
             season_stats.append({
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
-                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
+                "Sim. PPG": sim_ppg,
                 "TS%": p["TS_PCT"],
                 "True TSI": p["TRUE_SCORING_IMPACT"],
                 "Est. GP": est_games,
@@ -376,11 +378,12 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         for p in all_teams[t]:
             # Estimate playoff games: max 21 games (3 rounds x 7), scaled by availability
             est_playoff_games = round(21 * (1 - p["INJURY_PROB"] / 100))
+            sim_ppg_playoffs = max(0.0, round(rng.normal(loc=p["PPG"], scale=2.5) * (1 - p["INJURY_PROB"] / 100), 1))
             playoff_stats.append({
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
                 "True TSI": p["TRUE_SCORING_IMPACT"],
-                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
+                "Sim. PPG": sim_ppg_playoffs,
                 "Est. Playoff GP": est_playoff_games,
                 "Inj. Risk %": p["INJURY_PROB"]
             })
@@ -395,7 +398,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         "champion_id": champion,
         "fmvp_name": fmvp["PLAYER_NAME"],
         "fmvp_tsi": round(fmvp["TRUE_SCORING_IMPACT"], 2),
-        "fmvp_ppg": round(fmvp["PPG"] * (1 - fmvp["INJURY_PROB"] / 100), 1),
+        "fmvp_ppg": max(0.0, round(rng.normal(loc=fmvp["PPG"], scale=2.5) * (1 - fmvp["INJURY_PROB"] / 100), 1)),
         "season_mvp": season_mvp,
         "season_stats_df": season_stats_df,
         "playoff_stats_df": playoff_stats_df,
@@ -478,7 +481,7 @@ def render_simulation_results(results: dict):
             <div class="mvp-label">🏅 Season MVP</div>
             <div class="mvp-name">{mvp['PLAYER_NAME']}</div>
             <div style="font-size:13px;color:#aaa;margin-top:4px;">
-                {mvp['Est. PPG']} Est. PPG &nbsp;·&nbsp; True TSI: {mvp['TRUE_SCORING_IMPACT']} &nbsp;·&nbsp; {mvp['TEAM']}
+                {mvp['Est. PPG']} Sim. PPG &nbsp;·&nbsp; True TSI: {mvp['TRUE_SCORING_IMPACT']} &nbsp;·&nbsp; {mvp['TEAM']}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -489,7 +492,7 @@ def render_simulation_results(results: dict):
             <div class="award-label">🎯 Finals MVP</div>
             <div class="award-name">{results['fmvp_name']}</div>
             <div style="font-size:13px;color:#aaa;margin-top:4px;">
-                {results['fmvp_ppg']} Est. PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
+                {results['fmvp_ppg']} Sim. PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
             </div>
         </div>
         """, unsafe_allow_html=True)
