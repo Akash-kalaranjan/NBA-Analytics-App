@@ -296,17 +296,21 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
             losses[t_a] += 1
 
     # ── SEASON MVP ────────────────────────────
-    # Score = TSI * availability * wins_factor * noise
-    # wins_factor gives up to +20% boost for players on the best team
-    # availability penalizes players who miss games
+    # Score = TSI * availability_dampened * wins_factor * noise * hot_streak
+    # availability is dampened (square root) so missing games hurts less
+    # hot_streak adds a career year / down year tier per player
     mvp_candidates = []
     for t, roster in all_teams.items():
         team_wins = wins[t]
         wins_factor = 1 + (team_wins / 82) * 0.2
         for p in roster:
-            availability = p["GP"] / 82
-            noise = rng.uniform(0.95, 1.05)
-            mvp_score = p["TRUE_SCORING_IMPACT"] * availability * wins_factor * noise
+            availability = (p["GP"] / 82) ** 0.5   # square root dampens the penalty
+            noise = rng.uniform(0.85, 1.15)         # wider noise window vs old 0.95-1.05
+            hot_streak = rng.choice(
+                [0.85, 0.95, 1.0, 1.05, 1.15],
+                p=[0.1, 0.2, 0.4, 0.2, 0.1]
+            )
+            mvp_score = p["TRUE_SCORING_IMPACT"] * availability * wins_factor * noise * hot_streak
             mvp_candidates.append({
                 "PLAYER_NAME": p["PLAYER_NAME"],
                 "TEAM": team_labels[t],
@@ -350,7 +354,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
     # ── FMVP ──────────────────────────────────
     # Player on champion roster with highest TSI * availability
     champion_roster = all_teams[champion]
-    fmvp = max(champion_roster, key=lambda p: p["TRUE_SCORING_IMPACT"] * (p["GP"] / 82))
+    fmvp = max(champion_roster, key=lambda p: p["TRUE_SCORING_IMPACT"] * (p["GP"] / 82) ** 0.5)
 
     # ── PLAYER STATS TABLES ───────────────────
     # Season stats: all players across all teams
