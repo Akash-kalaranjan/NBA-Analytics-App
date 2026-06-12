@@ -310,7 +310,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
             mvp_candidates.append({
                 "PLAYER_NAME": p["PLAYER_NAME"],
                 "TEAM": team_labels[t],
-                "PPG": p["PPG"],
+                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
                 "TRUE_SCORING_IMPACT": p["TRUE_SCORING_IMPACT"],
                 "GP": p["GP"],
                 "MVP_SCORE": round(mvp_score, 3)
@@ -361,7 +361,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
             season_stats.append({
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
-                "PPG": p["PPG"],
+                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
                 "TS%": p["TS_PCT"],
                 "True TSI": p["TRUE_SCORING_IMPACT"],
                 "Est. GP": est_games,
@@ -380,7 +380,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
                 "True TSI": p["TRUE_SCORING_IMPACT"],
-                "PPG": p["PPG"],
+                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
                 "Est. Playoff GP": est_playoff_games,
                 "Inj. Risk %": p["INJURY_PROB"]
             })
@@ -395,7 +395,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         "champion_id": champion,
         "fmvp_name": fmvp["PLAYER_NAME"],
         "fmvp_tsi": round(fmvp["TRUE_SCORING_IMPACT"], 2),
-        "fmvp_ppg": fmvp["PPG"],
+        "fmvp_ppg": round(fmvp["PPG"] * (1 - fmvp["INJURY_PROB"] / 100), 1),
         "season_mvp": season_mvp,
         "season_stats_df": season_stats_df,
         "playoff_stats_df": playoff_stats_df,
@@ -478,7 +478,7 @@ def render_simulation_results(results: dict):
             <div class="mvp-label">🏅 Season MVP</div>
             <div class="mvp-name">{mvp['PLAYER_NAME']}</div>
             <div style="font-size:13px;color:#aaa;margin-top:4px;">
-                {mvp['PPG']} PPG &nbsp;·&nbsp; True TSI: {mvp['TRUE_SCORING_IMPACT']} &nbsp;·&nbsp; {mvp['TEAM']}
+                {mvp['Est. PPG']} Est. PPG &nbsp;·&nbsp; True TSI: {mvp['TRUE_SCORING_IMPACT']} &nbsp;·&nbsp; {mvp['TEAM']}
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -489,7 +489,7 @@ def render_simulation_results(results: dict):
             <div class="award-label">🎯 Finals MVP</div>
             <div class="award-name">{results['fmvp_name']}</div>
             <div style="font-size:13px;color:#aaa;margin-top:4px;">
-                {results['fmvp_ppg']} PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
+                {results['fmvp_ppg']} Est. PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
             </div>
         </div>
         """, unsafe_allow_html=True)
