@@ -201,7 +201,7 @@ def pick_player(player_id: int):
             break
 
         auto_player = state["available"][state["available"]["PLAYER_ID"] == chosen_id].iloc[0].to_dict()
-        state["auto_teams"][next_team].append(auto_player)
+        state["ai_teams"][next_team].append(auto_player)
         state["available"] = state["available"][state["available"]["PLAYER_ID"] != chosen_id].reset_index(drop=True)
         state["last_auto_picks"].append((next_team, auto_player["PLAYER_NAME"]))
 
