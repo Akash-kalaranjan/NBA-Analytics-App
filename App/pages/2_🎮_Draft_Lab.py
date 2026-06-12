@@ -85,7 +85,10 @@ st.markdown("""
 # ─────────────────────────────────────────────
 @st.cache_data
 def load_draft_pool():
-    df = pd.read_csv("data/players_final_scores.csv")
+    import os
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(base_dir, "..", "..", "data", "players_final_scores.csv")
+    df = pd.read_csv(csv_path)
 
     pool = df[[
         "PLAYER_ID",
