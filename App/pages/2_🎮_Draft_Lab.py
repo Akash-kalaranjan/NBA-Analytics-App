@@ -451,9 +451,9 @@ if not st.session_state.get("draft_started", False):
     st.markdown("""
     **How it works:**
     - 8 teams · 8 rounds · snake draft
-    - You see PPG and TS% only — True TSI is hidden until the draft ends
+    - You see PPG and TS% only: True TSI is hidden until the draft ends
     - Injury risk affects game-night availability in the simulated season
-    - Top 4 teams make the playoffs · Best of 5 series · Champion crowned
+    - Top 4 teams make the playoffs · Best of 7 series · Champion crowned
     """)
     st.info(f"📋 Draft pool: **{len(pool)} players** available")
 
