@@ -254,46 +254,37 @@ def simulate_series(roster_a: list, roster_b: list, wins_needed: int, rng: np.ra
     return wins_a, wins_b
 
 
-def run_simulation(user_team: list, auto_teams: dict, seed: int) -> dict:
-    """
-    Full simulation: regular season → playoffs → champion → FMVP.
-
-    Returns a results dict with all data needed for display.
-    """
+def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
     rng = np.random.default_rng(seed=seed)
 
-    # Build unified team registry: team_id → roster
-    # Team 0 = user, Teams 1-7 = Auto
     all_teams = {0: user_team}
-    all_teams.update(auto_teams)
+    all_teams.update(ai_teams)
     team_labels = {0: "⛹️ Your Team"}
     for i in range(1, 8):
         team_labels[i] = f"🤖 Auto {i}"
 
     n_teams = len(all_teams)
 
-    # ── REGULAR SEASON ────────────────────────
-    # Each pair of teams plays one game (round-robin, 7 games per team)
+    # ── REGULAR SEASON (82 games per team) ────
     wins = {t: 0 for t in all_teams}
     losses = {t: 0 for t in all_teams}
 
-    matchups = []
     team_ids = list(all_teams.keys())
-    for i in range(n_teams):
-        for j in range(i + 1, n_teams):
-            t_a, t_b = team_ids[i], team_ids[j]
-            str_a = game_strength(all_teams[t_a], rng)
-            str_b = game_strength(all_teams[t_b], rng)
-            wp_a = sigmoid(str_a - str_b)
-            if rng.random() < wp_a:
-                wins[t_a] += 1
-                losses[t_b] += 1
-                winner = t_a
-            else:
-                wins[t_b] += 1
-                losses[t_a] += 1
-                winner = t_b
-            matchups.append((team_labels[t_a], team_labels[t_b], team_labels[winner]))
+    pairs = [(team_ids[i], team_ids[j]) for i in range(n_teams) for j in range(i + 1, n_teams)]
+    # Each pair plays multiple times to reach ~82 games per team
+    repeats = -(-82 // (n_teams - 1))  # ceiling division
+    schedule = (pairs * repeats)[:82 * n_teams // 2]
+
+    for t_a, t_b in schedule:
+        str_a = game_strength(all_teams[t_a], rng)
+        str_b = game_strength(all_teams[t_b], rng)
+        wp_a = sigmoid(str_a - str_b)
+        if rng.random() < wp_a:
+            wins[t_a] += 1
+            losses[t_b] += 1
+        else:
+            wins[t_b] += 1
+            losses[t_a] += 1
 
     # Standings: sort by wins descending
     standings = sorted(all_teams.keys(), key=lambda t: wins[t], reverse=True)
@@ -308,28 +299,22 @@ def run_simulation(user_team: list, auto_teams: dict, seed: int) -> dict:
         for i, t in enumerate(standings)
     ]
 
-    # ── PLAYOFFS ──────────────────────────────
-    # Top 4 advance: 1 vs 4, 2 vs 3 in semis; winners meet in finals
-    # Best of 5 (first to 3 wins)
+    # ── PLAYOFFS (best of 7, first to 4) ──────
     s1, s2, s3, s4 = standings[:4]
 
-    # Semifinal 1: seed 1 vs seed 4
-    w1, w4 = simulate_series(all_teams[s1], all_teams[s4], wins_needed=3, rng=rng)
+    w1, w4 = simulate_series(all_teams[s1], all_teams[s4], wins_needed=4, rng=rng)
     semi1_winner = s1 if w1 > w4 else s4
     semi1_result = f"{team_labels[s1]} {w1}–{w4} {team_labels[s4]}"
 
-    # Semifinal 2: seed 2 vs seed 3
-    w2, w3 = simulate_series(all_teams[s2], all_teams[s3], wins_needed=3, rng=rng)
+    w2, w3 = simulate_series(all_teams[s2], all_teams[s3], wins_needed=4, rng=rng)
     semi2_winner = s2 if w2 > w3 else s3
     semi2_result = f"{team_labels[s2]} {w2}–{w3} {team_labels[s3]}"
 
-    # Finals
-    wf_a, wf_b = simulate_series(all_teams[semi1_winner], all_teams[semi2_winner], wins_needed=3, rng=rng)
+    wf_a, wf_b = simulate_series(all_teams[semi1_winner], all_teams[semi2_winner], wins_needed=4, rng=rng)
     champion = semi1_winner if wf_a > wf_b else semi2_winner
     finals_result = f"{team_labels[semi1_winner]} {wf_a}–{wf_b} {team_labels[semi2_winner]}"
 
     # ── FMVP ──────────────────────────────────
-    # Player on champion roster with highest True TSI
     champion_roster = all_teams[champion]
     fmvp = max(champion_roster, key=lambda p: p["TRUE_SCORING_IMPACT"])
 
