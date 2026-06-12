@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import os
 
 # ─────────────────────────────────────────────
 # PAGE CONFIG
@@ -26,7 +27,7 @@ st.markdown("""
     padding: 16px 20px;
     margin-bottom: 12px;
 }
-.ai-pick-flash {
+.auto-pick-flash {
     background: #1a1a2e;
     border-left: 3px solid #6c6cff;
     padding: 8px 14px;
@@ -56,15 +57,15 @@ st.markdown("""
     font-weight: 800;
     color: #ffffff;
 }
-.fmvp-banner {
+.award-banner {
     background: #1a1a2e;
     border: 1.5px solid #6c6cff;
     border-radius: 10px;
     padding: 18px 24px;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
-.fmvp-label {
+.award-label {
     font-size: 12px;
     color: #6c6cff;
     font-weight: 700;
@@ -72,7 +73,28 @@ st.markdown("""
     text-transform: uppercase;
     margin-bottom: 4px;
 }
-.fmvp-name {
+.award-name {
+    font-size: 22px;
+    font-weight: 700;
+    color: #f0f0f0;
+}
+.mvp-banner {
+    background: #1a1a2e;
+    border: 1.5px solid #f6a623;
+    border-radius: 10px;
+    padding: 18px 24px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+.mvp-label {
+    font-size: 12px;
+    color: #f6a623;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.mvp-name {
     font-size: 22px;
     font-weight: 700;
     color: #f0f0f0;
@@ -85,7 +107,6 @@ st.markdown("""
 # ─────────────────────────────────────────────
 @st.cache_data
 def load_draft_pool():
-    import os
     base_dir = os.path.dirname(os.path.abspath(__file__))
     csv_path = os.path.join(base_dir, "..", "..", "Data", "players_final_scores.csv")
     df = pd.read_csv(csv_path)
@@ -132,9 +153,9 @@ def generate_draft_order(n_teams: int, n_rounds: int, seed: int) -> list[int]:
 
 
 # ─────────────────────────────────────────────
-# Auto PICK LOGIC
+# AUTO PICK LOGIC
 # ─────────────────────────────────────────────
-def ai_pick(available_pool: pd.DataFrame, rng: np.random.Generator) -> int:
+def auto_pick(available_pool: pd.DataFrame, rng: np.random.Generator) -> int:
     if len(available_pool) == 0:
         return None
     if rng.random() < 0.80 or len(available_pool) < 3:
@@ -196,7 +217,7 @@ def pick_player(player_id: int):
         if next_team == state["user_team_idx"]:
             break
 
-        chosen_id = ai_pick(state["available"], state["auto_rng"])
+        chosen_id = auto_pick(state["available"], state["auto_rng"])
         if chosen_id is None:
             break
 
@@ -216,32 +237,21 @@ def pick_player(player_id: int):
 # SIMULATION ENGINE
 # ─────────────────────────────────────────────
 def sigmoid(x: float) -> float:
-    """Converts TSI strength difference into a win probability (0 to 1)."""
     return 1 / (1 + np.exp(-x / 15))
-    # Dividing by 15 scales the TSI difference so that a gap of ~15 TSI points
-    # gives roughly a 73% win probability — feels realistic without being deterministic
 
 
 def game_strength(roster: list, rng: np.random.Generator) -> float:
-    """
-    For a single game, each player sits out with their injury probability.
-    Team strength = sum of True TSI of healthy players + small noise.
-    """
     healthy_tsi = [
         p["TRUE_SCORING_IMPACT"]
         for p in roster
         if rng.random() > p["INJURY_PROB"] / 100
     ]
     base = sum(healthy_tsi) if healthy_tsi else 0.0
-    noise = rng.uniform(-0.05, 0.05) * base   # ±5% variance per game
+    noise = rng.uniform(-0.05, 0.05) * base
     return base + noise
 
 
 def simulate_series(roster_a: list, roster_b: list, wins_needed: int, rng: np.random.Generator) -> tuple[int, int]:
-    """
-    Simulate a best-of-(2*wins_needed - 1) series.
-    Returns (wins_a, wins_b).
-    """
     wins_a, wins_b = 0, 0
     while wins_a < wins_needed and wins_b < wins_needed:
         str_a = game_strength(roster_a, rng)
@@ -271,8 +281,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
 
     team_ids = list(all_teams.keys())
     pairs = [(team_ids[i], team_ids[j]) for i in range(n_teams) for j in range(i + 1, n_teams)]
-    # Each pair plays multiple times to reach ~82 games per team
-    repeats = -(-82 // (n_teams - 1))  # ceiling division
+    repeats = -(-82 // (n_teams - 1))
     schedule = (pairs * repeats)[:82 * n_teams // 2]
 
     for t_a, t_b in schedule:
@@ -286,7 +295,31 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
             wins[t_b] += 1
             losses[t_a] += 1
 
-    # Standings: sort by wins descending
+    # ── SEASON MVP ────────────────────────────
+    # Score = TSI * availability * wins_factor * noise
+    # wins_factor gives up to +20% boost for players on the best team
+    # availability penalizes players who miss games
+    mvp_candidates = []
+    for t, roster in all_teams.items():
+        team_wins = wins[t]
+        wins_factor = 1 + (team_wins / 82) * 0.2
+        for p in roster:
+            availability = p["GP"] / 82
+            noise = rng.uniform(0.95, 1.05)
+            mvp_score = p["TRUE_SCORING_IMPACT"] * availability * wins_factor * noise
+            mvp_candidates.append({
+                "PLAYER_NAME": p["PLAYER_NAME"],
+                "TEAM": team_labels[t],
+                "PPG": p["PPG"],
+                "TRUE_SCORING_IMPACT": p["TRUE_SCORING_IMPACT"],
+                "GP": p["GP"],
+                "MVP_SCORE": round(mvp_score, 3)
+            })
+
+    mvp_candidates.sort(key=lambda x: x["MVP_SCORE"], reverse=True)
+    season_mvp = mvp_candidates[0]
+
+    # Standings
     standings = sorted(all_teams.keys(), key=lambda t: wins[t], reverse=True)
     standings_rows = [
         {
@@ -315,8 +348,43 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
     finals_result = f"{team_labels[semi1_winner]} {wf_a}–{wf_b} {team_labels[semi2_winner]}"
 
     # ── FMVP ──────────────────────────────────
+    # Player on champion roster with highest TSI * availability
     champion_roster = all_teams[champion]
-    fmvp = max(champion_roster, key=lambda p: p["TRUE_SCORING_IMPACT"])
+    fmvp = max(champion_roster, key=lambda p: p["TRUE_SCORING_IMPACT"] * (p["GP"] / 82))
+
+    # ── PLAYER STATS TABLES ───────────────────
+    # Season stats: all players across all teams
+    season_stats = []
+    for t, roster in all_teams.items():
+        for p in roster:
+            est_games = round(p["GP"] * (1 - p["INJURY_PROB"] / 100))  # estimated games played in sim
+            season_stats.append({
+                "Player": p["PLAYER_NAME"],
+                "Team": team_labels[t],
+                "PPG": p["PPG"],
+                "TS%": p["TS_PCT"],
+                "True TSI": p["TRUE_SCORING_IMPACT"],
+                "Est. GP": est_games,
+                "Inj. Risk %": p["INJURY_PROB"]
+            })
+    season_stats_df = pd.DataFrame(season_stats).sort_values("True TSI", ascending=False).reset_index(drop=True)
+
+    # Playoff stats: only top 4 seeded teams
+    playoff_teams = [s1, s2, s3, s4]
+    playoff_stats = []
+    for t in playoff_teams:
+        for p in all_teams[t]:
+            # Estimate playoff games: max 21 games (3 rounds x 7), scaled by availability
+            est_playoff_games = round(21 * (1 - p["INJURY_PROB"] / 100))
+            playoff_stats.append({
+                "Player": p["PLAYER_NAME"],
+                "Team": team_labels[t],
+                "True TSI": p["TRUE_SCORING_IMPACT"],
+                "PPG": p["PPG"],
+                "Est. Playoff GP": est_playoff_games,
+                "Inj. Risk %": p["INJURY_PROB"]
+            })
+    playoff_stats_df = pd.DataFrame(playoff_stats).sort_values("True TSI", ascending=False).reset_index(drop=True)
 
     return {
         "standings": standings_rows,
@@ -328,6 +396,9 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         "fmvp_name": fmvp["PLAYER_NAME"],
         "fmvp_tsi": round(fmvp["TRUE_SCORING_IMPACT"], 2),
         "fmvp_ppg": fmvp["PPG"],
+        "season_mvp": season_mvp,
+        "season_stats_df": season_stats_df,
+        "playoff_stats_df": playoff_stats_df,
     }
 
 
@@ -350,7 +421,6 @@ def render_roster_sidebar(user_team: list, round_num: int, n_rounds: int):
 
 
 def render_draft_reveal(user_team: list, ai_teams: dict):
-    """Shows rosters + TSI reveal before simulation runs."""
     st.success("✅ Draft Complete — True Scoring Impact revealed.")
     st.markdown("---")
 
@@ -387,7 +457,6 @@ def render_draft_reveal(user_team: list, ai_teams: dict):
 
 
 def render_simulation_results(results: dict):
-    """Renders regular season standings, playoff bracket, champion, and FMVP."""
     st.markdown("---")
     st.markdown("## 🏆 Season Results")
 
@@ -399,26 +468,38 @@ def render_simulation_results(results: dict):
     </div>
     """, unsafe_allow_html=True)
 
-    # FMVP
-    st.markdown(f"""
-    <div class="fmvp-banner">
-        <div class="fmvp-label">Finals MVP</div>
-        <div class="fmvp-name">{results['fmvp_name']}</div>
-        <div style="font-size:13px;color:#aaa;margin-top:4px;">
-            {results['fmvp_ppg']} PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Awards row
+    col_mvp, col_fmvp = st.columns([1, 1])
 
+    with col_mvp:
+        mvp = results["season_mvp"]
+        st.markdown(f"""
+        <div class="mvp-banner">
+            <div class="mvp-label">🏅 Season MVP</div>
+            <div class="mvp-name">{mvp['PLAYER_NAME']}</div>
+            <div style="font-size:13px;color:#aaa;margin-top:4px;">
+                {mvp['PPG']} PPG &nbsp;·&nbsp; True TSI: {mvp['TRUE_SCORING_IMPACT']} &nbsp;·&nbsp; {mvp['TEAM']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_fmvp:
+        st.markdown(f"""
+        <div class="award-banner">
+            <div class="award-label">🎯 Finals MVP</div>
+            <div class="award-name">{results['fmvp_name']}</div>
+            <div style="font-size:13px;color:#aaa;margin-top:4px;">
+                {results['fmvp_ppg']} PPG &nbsp;·&nbsp; True TSI: {results['fmvp_tsi']}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Standings + Playoff bracket
     col1, col2 = st.columns([1, 1])
 
     with col1:
         st.markdown("### 📊 Regular Season Standings")
-        st.dataframe(
-            pd.DataFrame(results["standings"]),
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(pd.DataFrame(results["standings"]), use_container_width=True, hide_index=True)
 
     with col2:
         st.markdown("### 🎯 Playoff Results")
@@ -428,11 +509,22 @@ def render_simulation_results(results: dict):
         st.markdown("**Finals**")
         st.markdown(f"- {results['finals']}")
 
+    # Player stats tabs
+    st.markdown("---")
+    st.markdown("## 📋 Player Stats")
+    tab1, tab2 = st.tabs(["Regular Season", "Playoffs"])
+
+    with tab1:
+        st.dataframe(results["season_stats_df"], use_container_width=True, hide_index=True)
+
+    with tab2:
+        st.dataframe(results["playoff_stats_df"], use_container_width=True, hide_index=True)
+
     st.markdown("---")
     if st.button("🔄 Start New Draft"):
         for key in ["draft_started", "draft_complete", "sim_complete", "sim_results",
                     "available", "user_team", "ai_teams", "draft_order",
-                    "current_pick", "round_num", "last_ai_picks", "ai_rng", "draft_pool"]:
+                    "current_pick", "round_num", "last_auto_picks", "auto_rng", "draft_pool"]:
             if key in st.session_state:
                 del st.session_state[key]
         st.rerun()
@@ -480,7 +572,7 @@ if st.session_state.get("draft_complete", False):
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
         if st.button("▶️ Run Season Simulation", use_container_width=True, type="primary"):
-            seed = int(pd.Timestamp.now().toordinal()) + 1   # +1 so it differs from draft seed
+            seed = int(pd.Timestamp.now().timestamp() * 1000) + 1
             results = run_simulation(
                 st.session_state["user_team"],
                 st.session_state["ai_teams"],
@@ -501,11 +593,11 @@ render_roster_sidebar(state["user_team"], state["round_num"], state["n_rounds"])
 progress = state["current_pick"] / total_picks
 st.progress(progress, text=f"Pick {state['current_pick'] + 1} of {total_picks} · Round {state['round_num']}")
 
-if state.get("last_ai_picks"):
+if state.get("last_auto_picks"):
     st.markdown("**Recent Auto picks:**")
-    for team_idx, name in state["last_ai_picks"]:
+    for team_idx, name in state["last_auto_picks"]:
         st.markdown(
-            f'<div class="ai-pick-flash">🤖 Auto {team_idx} drafted <strong>{name}</strong></div>',
+            f'<div class="auto-pick-flash">🤖 Auto {team_idx} drafted <strong>{name}</strong></div>',
             unsafe_allow_html=True
         )
 
