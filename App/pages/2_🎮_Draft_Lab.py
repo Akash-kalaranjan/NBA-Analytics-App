@@ -87,7 +87,7 @@ st.markdown("""
 def load_draft_pool():
     import os
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    csv_path = os.path.join(base_dir, "..", "..", "data", "players_final_scores.csv")
+    csv_path = os.path.join(base_dir, "..", "..", "Data", "players_final_scores.csv")
     df = pd.read_csv(csv_path)
 
     pool = df[[
