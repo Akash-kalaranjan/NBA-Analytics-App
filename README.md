@@ -1,3 +1,5 @@
+Link to the Web App: [clutch-analytics](https://clutch-analytics.streamlit.app)
+
 # NBA True Scoring Value Model
 
 ## Project goal
@@ -27,3 +29,10 @@ notebooks/   → EDA and analysis
 - Scoring volume (PTS) and efficiency (TS_PCT) have a weak correlation 
   (r = 0.25), confirming that PPG alone is a misleading measure of 
   scoring quality.
+
+
+  ![TSI Leaderboard](image-1.png)
+
+  ### What is the TSI Model (True Scoring Impact)
+
+  
