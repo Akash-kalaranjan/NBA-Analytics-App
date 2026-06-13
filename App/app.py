@@ -34,7 +34,9 @@ def load_data(season_type="Regular Season"):
     )
 
     if needs_rebuild:
-            subprocess.run(["python", str(build_script)], check=True)
+        result = subprocess.run(["python", str(build_script)])
+        if result.returncode != 0:
+            st.warning("Data refresh , using cached data.")
 
     if season_type == "Playoffs":
         if path.exists():
