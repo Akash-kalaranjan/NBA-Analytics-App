@@ -998,3 +998,6 @@ if page == "Underrated Players":
             hide_index=True,
             width="stretch",
         )
+
+st.markdown("---")
+st.caption("Data sourced from NBA.com via nba_api · For educational and portfolio purposes only · Not affiliated with the NBA")
