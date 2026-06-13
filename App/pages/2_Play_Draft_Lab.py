@@ -313,10 +313,12 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
                 p=[0.1, 0.2, 0.4, 0.2, 0.1]
             )
             mvp_score = p["TRUE_SCORING_IMPACT"] * availability * wins_factor * noise * hot_streak
+            team_avg_usg = np.mean([q["USG_PCT"] for q in all_teams[t]]) if all_teams[t] else 0.25
+            fit_multiplier = 1 + (0.25 - team_avg_usg)
             mvp_candidates.append({
                 "PLAYER_NAME": p["PLAYER_NAME"],
                 "TEAM": team_labels[t],
-                "Est. PPG": round(p["PPG"] * (1 - p["INJURY_PROB"] / 100), 1),
+                "Est. PPG": max(0.0, round(rng.normal(loc=p["PPG"] * fit_multiplier, scale=2.5), 1)),
                 "TRUE_SCORING_IMPACT": p["TRUE_SCORING_IMPACT"],
                 "GP": p["GP"],
                 "MVP_SCORE": round(mvp_score, 3)
