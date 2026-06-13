@@ -118,7 +118,8 @@ def load_draft_pool():
         "GP",
         "PTS",
         "TS_PCT",
-        "TRUE_SCORING_IMPACT"
+        "TRUE_SCORING_IMPACT",
+        "USG_PCT"
     ]].copy()
 
     pool = pool.rename(columns={"PTS": "PPG"})
