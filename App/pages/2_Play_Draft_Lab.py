@@ -365,7 +365,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         for p in roster:
             est_games = round(p["GP"] * (1 - p["INJURY_PROB"] / 100))
             # Simulated PPG: normal draw around real PPG, scaled by team fit, lower bound of 0
-            team_avg_usg = mean(p["USG_PCT"] for p in roster) if roster else 0.25
+            team_avg_usg = mean(q["USG_PCT"] for q in roster) if roster else 0.25
             fit_multiplier = 1 + (0.25 - team_avg_usg)  # 0.25 is roughly league average usage
             sim_ppg = max(0.0, round(rng.normal(loc=p["PPG"] * fit_multiplier, scale=2.5), 1))
             season_stats.append({
@@ -386,7 +386,7 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         for p in all_teams[t]:
             # Estimate playoff games: max 21 games (3 rounds x 7), scaled by availability
             est_playoff_games = round(21 * (1 - p["INJURY_PROB"] / 100))
-            team_avg_usg = mean(p["USG_PCT"] for p in roster) if roster else 0.25
+            team_avg_usg = mean(q["USG_PCT"] for q in roster) if roster else 0.25
             fit_multiplier = 1 + (0.25 - team_avg_usg)  # 0.25 is roughly league average usage
             sim_ppg_playoffs = max(0.0, round(rng.normal(loc=p["PPG"] * fit_multiplier, scale=2.5), 1))
             playoff_stats.append({
