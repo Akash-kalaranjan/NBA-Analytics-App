@@ -1,3 +1,4 @@
+from narwhals import mean
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -6,7 +7,7 @@ import os
 # ─────────────────────────────────────────────
 # PAGE CONFIG
 # ─────────────────────────────────────────────
-st.set_page_config(page_title="Draft Lab", page_icon="🎮", layout="wide")
+st.set_page_config(page_title="Play Draft Lab", page_icon="🎮", layout="wide")
 
 # ─────────────────────────────────────────────
 # STYLING
@@ -362,8 +363,10 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
     for t, roster in all_teams.items():
         for p in roster:
             est_games = round(p["GP"] * (1 - p["INJURY_PROB"] / 100))
-            # Simulated PPG: normal draw around real PPG, scaled by availability, clamped at 0
-            sim_ppg = max(0.0, round(rng.normal(loc=p["PPG"], scale=2.5) * (1 - p["INJURY_PROB"] / 100), 1))
+            # Simulated PPG: normal draw around real PPG, scaled by team fit, lower bound of 0
+            team_avg_usg = mean(p["USG_PCT"] for p in roster) if roster else 0.25
+            fit_multiplier = 1 + (0.25 - team_avg_usg)  # 0.25 is roughly league average usage
+            sim_ppg = max(0.0, round(rng.normal(loc=p["PPG"] * fit_multiplier, scale=2.5), 1))
             season_stats.append({
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
@@ -382,7 +385,9 @@ def run_simulation(user_team: list, ai_teams: dict, seed: int) -> dict:
         for p in all_teams[t]:
             # Estimate playoff games: max 21 games (3 rounds x 7), scaled by availability
             est_playoff_games = round(21 * (1 - p["INJURY_PROB"] / 100))
-            sim_ppg_playoffs = max(0.0, round(rng.normal(loc=p["PPG"], scale=2.5) * (1 - p["INJURY_PROB"] / 100), 1))
+            team_avg_usg = mean(p["USG_PCT"] for p in roster) if roster else 0.25
+            fit_multiplier = 1 + (0.25 - team_avg_usg)  # 0.25 is roughly league average usage
+            sim_ppg_playoffs = max(0.0, round(rng.normal(loc=p["PPG"] * fit_multiplier, scale=2.5), 1))
             playoff_stats.append({
                 "Player": p["PLAYER_NAME"],
                 "Team": team_labels[t],
