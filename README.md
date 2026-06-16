@@ -47,3 +47,15 @@ notebooks/   → EDA and analysis
 | Team Independence | 10% | How much scoring impact holds up independent of team system effects |
 
 Each stage is individually scaled to 0–100 using min-max normalization before being combined into a final weighted TSI score. The model uses data sourced from NBA.com via the `nba_api` library and is rebuilt daily.
+
+### Clutch Analytics - Turning the model building into a web app
+
+* **Home** — Overview of the project and TSI metric introduction
+* **Leaderboard** — Full TSI rankings for all qualified players with filters for team, PPG, minutes, and games played
+* **Player Profile** — Individual player breakdown across all five TSI stages with visualizations
+* **Comparison Tool** — Side by side TSI stage comparison between two players
+* **Stage Explorer** — Deep dive into each individual TSI stage with league wide distributions
+* **Underrated Players** — Players whose TSI significantly exceeds their PPG ranking, identified via OLS regression
+* **Today's Debate** — Daily randomized matchup between two players within 7 TSI points of each other
+* **Draft Lab** — 8-team snake draft simulator with 82 game season simulation, best of 7playoffs, team fit adjustments, MVP and Finals MVP awards
+* **Background** — EDA graphs, methodology report, formulas, and project information
