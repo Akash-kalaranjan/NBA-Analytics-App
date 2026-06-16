@@ -37,13 +37,13 @@ notebooks/   → EDA and analysis
 ### What is the TSI Model (True Scoring Impact)
 
   - TSI is a score a created that is a 0–100 composite metric that measures a player's true scoring impact across five weighted pipeline stages:
-
-
+  
 | Stage | Weight | What it measures |
-| Volume|---|---|
-| Effeciency |---|---|
-| | | |
-| | | |
-| | | |
-| | | |
+|---|---|---|
+| Volume | 25% | Scoring load: points, shot attempts, and usage rate |
+| Efficiency | 25% | How efficiently a player scores relative to expected efficiency |
+| Shot Difficulty | 25% | Scoring output on harder shots (pull-ups, mid-range, long 2s) |
+| Game Context | 15% | Performance in clutch situations, home/away splits, and rest factors |
+| Team Independence | 10% | How much scoring impact holds up independent of team system effects |
 
+Each stage is individually scaled to 0–100 using min-max normalization before being combined into a final weighted TSI score. The model uses data sourced from NBA.com via the `nba_api` library and is rebuilt daily.
