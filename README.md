@@ -48,7 +48,7 @@ notebooks/   → EDA and analysis
 
 Each stage is individually scaled to 0–100 using min-max normalization before being combined into a final weighted TSI score. The model uses data sourced from NBA.com via the `nba_api` library and is rebuilt daily.
 
-### Clutch Analytics - Turning the model building into a web app
+### Clutch Analytics (Turning the model building into a web app)
 
 * **Home** — Overview of the project and TSI metric introduction
 * **Leaderboard** — Full TSI rankings for all qualified players with filters for team, PPG, minutes, and games played
