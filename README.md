@@ -36,8 +36,8 @@ notebooks/   → EDA and analysis
   
 ### What is the TSI Model (True Scoring Impact)
 
-  - TSI is a score a created that is a 0–100 composite metric that measures a player's true scoring impact across five weighted pipeline stages:
-  
+  - TSI is a model I created which essentially is a 0–100 composite metric that measures a player's true scoring impact across five weighted pipeline stages:
+
 | Stage | Weight | What it measures |
 |---|---|---|
 | Volume | 25% | Scoring load: points, shot attempts, and usage rate |
