@@ -12,7 +12,7 @@ import subprocess
 BASE_DIR = Path(__file__).resolve().parents[1]
 DATA_PATH_REG = BASE_DIR / "Data" / "players_final_scores.csv"
 DATA_PATH_PLAYOFFS = BASE_DIR / "Data" / "players_final_scores_playoffs.csv"
-HERO_VIDEO_PATH = BASE_DIR / "App" / "assets" / "hero-basketball.mp4.mp4"
+HERO_VIDEO_PATH = BASE_DIR / "App" / "Assets" / "hero-basketball.mp4.mp4"
 
 st.html('<meta name="google-site-verification" content="p9RdibTQo_49SyVWhAZzwS3iosOJ-Vb_jUrXvL-gpA8" />')
 
