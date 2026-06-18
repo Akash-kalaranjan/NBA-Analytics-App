@@ -47,8 +47,10 @@ NBA_HEADERS = {
 # Falls back to NBA_PROXY env var if API key is not set (e.g. local runs).
 def _load_proxy_list():
     api_key = os.environ.get("WEBSHARE_API_KEY")
+    print(f"  WEBSHARE_API_KEY present: {bool(api_key)}")
     if not api_key:
         fallback = os.environ.get("NBA_PROXY")
+        print(f"  NBA_PROXY fallback present: {bool(fallback)}")
         return [fallback] if fallback else []
     try:
         r = _requests.get(
@@ -56,16 +58,20 @@ def _load_proxy_list():
             headers={"Authorization": f"Token {api_key}"},
             timeout=10
         )
+        print(f"  Webshare API status: {r.status_code}")
         data = r.json()
+        print(f"  Webshare API response keys: {list(data.keys())}")
+        results = data.get("results", [])
+        print(f"  Total proxies returned: {len(results)}, valid: {sum(1 for p in results if p.get('valid'))}")
         proxies = [
             f"http://{p['username']}:{p['password']}@{p['proxy_address']}:{p['port']}"
-            for p in data.get("results", [])
+            for p in results
             if p.get("valid")
         ]
         print(f"  Loaded {len(proxies)} proxies from Webshare API")
         return proxies if proxies else []
     except Exception as e:
-        print(f"  Failed to fetch proxy list from Webshare: {e}")
+        print(f"  Failed to fetch proxy list from Webshare: {type(e).__name__}: {e}")
         return []
 
 PROXY_LIST = _load_proxy_list()
