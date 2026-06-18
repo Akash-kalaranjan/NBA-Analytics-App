@@ -25,7 +25,7 @@ st.set_page_config(
 def load_data(season_type="Regular Season"):
     suffix = "_playoffs" if season_type == "Playoffs" else ""
     path = BASE_DIR / "Data" / f"players_final_scores{suffix}.csv"
-    build_script = BASE_DIR / "build_dataset.py"
+    build_script = BASE_DIR / "Models" / "build_dataset.py"
 
     # Rebuild if file is missing or from a previous day
     needs_rebuild = (
