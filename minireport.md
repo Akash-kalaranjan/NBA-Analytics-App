@@ -5,7 +5,7 @@
 * High PPG does not equal high efficiency. SGA and Jokić score fewer points than Luka on average but shoot far more efficiently
 * Jaylen Brown is the least efficient of the top scorers despite high volume
 * Even amongst the most reputable scorers who face tough defensive coverages and take harder shots than the average player, volume and efficiency alone are insufficient to determine true scoring value
-* This emphasizes the importance of this model — by incorporating shot difficulty and situational context, we can build a more complete picture of how good a scorer each player truly is
+* This emphasizes the importance of this model, as by incorporating shot difficulty and situational context, we can build a more complete picture of how good a scorer each player truly is
 
 ### Efficiency vs Usage Rate
 
@@ -27,25 +27,25 @@
 * Scoring volume and efficiency have a weak but positive correlation. Only 6.25% of the variation in efficiency is explained by scoring volume
 * The weak positive correlation is consistent with confounding by player talent. More talented scorers tend to have higher usage and better efficiency, explaining the slight positive relationship
 * The relationship being weak confirms that volume alone does not explain efficiency. Shot type, difficulty, and defensive context account for the remaining variation, which is exactly what this model aims to capture
-* **FGA vs PTS (r = 0.98)** — scoring is primarily a volume stat. More shot attempts directly translates to more points, highlighting the need to adjust for opportunity when evaluating scoring quality
-* **TOV vs USG% (r = 0.80)** — high usage players handle the ball more and turn it over more. This is a byproduct of opportunity, not a criticism
+* **FGA vs PTS (r = 0.98)**: scoring is primarily a volume stat. More shot attempts directly translates to more points, highlighting the need to adjust for opportunity when evaluating scoring quality
+* **TOV vs USG% (r = 0.80)**: high usage players handle the ball more and turn it over more. This is a byproduct of opportunity, not a criticism
 * **OFF_RATING** has relatively weak correlations with most individual stats, suggesting it captures team level context that box score stats do not fully explain. This makes it a useful independent feature in the model
-* **TS% vs USG% (r = 0.0)** — efficiency and usage have no linear relationship at the league level. Elite players who maintain high efficiency at high usage are genuinely beating the expected tradeoff
+* **TS% vs USG% (r = 0.0)**: efficiency and usage have no linear relationship at the league level. Elite players who maintain high efficiency at high usage are genuinely beating the expected tradeoff
 
 ---
 
-### Stage 1 - The Volume Model
+### Stage 1: The Volume Model
 
 ### Goal
 Capture how much scoring opportunity a player receives. Before evaluating *how well* a player scores, we need to understand *how much* they are asked to score. Volume is the foundation of the model.
 
 ### What We Measure
 Five features that collectively reflect scoring opportunity:
-- **Usage Rate (USG%)** — proportion of team plays used by the player while on the floor
-- **Field Goal Attempts (FGA)** — raw shot volume per game
-- **Free Throw Attempts (FTA)** — ability to draw fouls and score at the line
-- **Minutes (MIN)** — time on the floor
-- **Games Played (GP)** — availability and durability across the season
+- **Usage Rate (USG%)**: proportion of team plays used by the player while on the floor
+- **Field Goal Attempts (FGA)**: raw shot volume per game
+- **Free Throw Attempts (FTA)**: ability to draw fouls and score at the line
+- **Minutes (MIN)**: time on the floor
+- **Games Played (GP)**: availability and durability across the season
 
 ### Formula
 Each feature is scaled to a 0–1 range using MinMax scaling, then combined as a weighted average:
@@ -70,7 +70,7 @@ Luka Dončić leads with a 97.3 volume score, consistent with his league-high us
 
 ---
 
-### Stage 2 — Efficiency Model
+### Stage 2: Efficiency Model
 
 
 ### Goal
@@ -105,12 +105,12 @@ Measure how efficiently a player scores relative to their expected efficiency gi
 - top of the efficiency leaderboard dominated by big men and catch-and-shoot specialists, revealing an important limitation of efficiency metrics in isolation. 
 - **Jakob Poeltl (80.3)** and **Deandre Ayton (75.6)** lead the list despite averaging only 10.7 and 12.5 PPG, respectively. Both benefit from high TS% on low usage (rarely take difficult shots and score primarily on assisted rim finishes inflating efficiency without reflecting true scoring creation). 
 - **Nikola Jokić (71.2)** is the standout exception, maintaining elite efficiency (TS% = 0.670) at a usage rate of 28.9% and 27.7 PPG. Beating expected TS% by 7.0% at that volume is genuinely elite. 
-- **Shai Gilgeous-Alexander (69.2)** ranks 10th despite leading the league in PPG (31.1) and carrying a 32.3% usage rate. His TS% of 0.665 is 6.1% (above expected) — exceptional given  volume & high shot difficulty level. Only high scoring volume gaurd that is amongst the top 15.
+- **Shai Gilgeous-Alexander (69.2)** ranks 10th despite leading the league in PPG (31.1) and carrying a 32.3% usage rate. His TS% of 0.665 is 6.1% (above expected). This level of efficiency exceptional given  volume & high shot difficulty level. Only high scoring volume gaurd that is amongst the top 15.
 - **Key takeaway**: Raw efficiency rewards role players who operate in favorable conditions. Hence, Stage 3 (Shot Difficulty) is necessary to adjust for the context in which efficiency is generated. 
 - I.E: Player A = big man finishing assisted lobs and a ball handler creating off the dribble at 30% usage. Player B = a scoring gaurd who operates as the offensive engine and the primary shot creator. Clearly player 
 
 
-R² = 0.20 — our model explains 20% of the variation in TS%. The remaining 80% is driven by factors not yet captured and shot difficulty, defender distance, and shot location are examples of such, which will be addressed in Stage 3.
+R² = 0.20: our model explains 20% of the variation in TS%. The remaining 80% is driven by factors not yet captured and shot difficulty, defender distance, and shot location are examples of such, which will be addressed in Stage 3.
 
 
 ### Limitation
@@ -134,12 +134,12 @@ Contextualizes efficiency relative to the difficulty of shots taken and role in 
 ### What We Measure
 
 
-- **PCT_PULLUP (0.30)** — Pull-ups, step backs, fadeaways, turnarounds. Fully self-created with no offensive setup — the hardest shot category in the NBA
-- **AVG_SHOT_DISTANCE (0.25)** — Farther shots are objectively harder and less efficient on average
-- **PCT_MIDRANGE (0.20)** — Analytically the worst shot in basketball — low percentage with no three-point bonus. Players who voluntarily live in mid-range face a genuinely hard diet
-- **PCT_RESTRICTED_HARD (+0.15)** — Rim attempts created through driving or cutting. The player earned the opportunity through contact or movement, making these difficult despite the short distance
-- **PCT_LATE_CLOCK (0.10)** — Shots taken with 4 or fewer seconds on the clock. Rushed and off-balance, but low frequency keeps the weight modest
-- **PCT_RESTRICTED_EASY (-0.10)** — Alley oops, putbacks, tip-ins. The easiest shots in basketball — the player is simply finishing what the offense created. Penalized accordingly
+- **PCT_PULLUP (0.30)**: Pull-ups, step backs, fadeaways, turnarounds. Fully self-created with no offensive setup. The hardest shot category in the NBA
+- **AVG_SHOT_DISTANCE (0.25)**: Farther shots are objectively harder and less efficient on average
+- **PCT_MIDRANGE (0.20)**: Analytically the worst shot in basketball, low percentage with no three-point bonus. Players who voluntarily live in mid-range face a genuinely hard diet
+- **PCT_RESTRICTED_HARD (+0.15)**: Rim attempts created through driving or cutting. The player earned the opportunity through contact or movement, making these difficult despite the short distance
+- **PCT_LATE_CLOCK (0.10)**: Shots taken with 4 or fewer seconds on the clock. Rushed and off-balance, but low frequency keeps the weight modest
+- **PCT_RESTRICTED_EASY (-0.10)**: Alley oops, putbacks, tip-ins. The easiest shots in basketball, the player is simply finishing what the offense created. Penalized accordingly
 
 
 How the score is built
@@ -178,18 +178,18 @@ Booker is the most actionable finding. He ranks 2nd in shot difficulty but 12th 
 
 - Weights (0.30, 0.25, 0.20 etc.) are manually chosen based on basketball intuition, not derived from data. A different weighting scheme produces different rankings and there is no internal validation confirming these weights are optimal
 - The R² of 0.1985 in Stage 2 is low by design, but a weak expected TS% baseline makes TS_ABOVE_EXPECTED noisy, which flows into difficulty-adjusted efficiency downstream
-- With 384 players, rankings at the extremes are meaningful. Players ranked 8th vs 12th are likely within noise — tight middle-of-the-list rankings should not be over-interpreted
+- With 384 players, rankings at the extremes are meaningful. Players ranked 8th vs 12th are likely within noise, tight middle-of-the-list rankings should not be over-interpreted
 
 
 ### Limitations & Potential Bias
 
 
-- **One season sample** — scores reflect 2025–26 specifically. Players coming off injury, in a contract year, or in a new system will look different than their career baseline
-- **System effects** — players on bad teams face more isolation and late clock situations by necessity, inflating difficulty scores. Cam Thomas at 86.2 partly reflects Brooklyn's broken offense, not purely individual skill
-- **Pull-up classification** — the model flags any shot with "Pull-Up", "Fadeaway", or "Step Back" in ACTION_TYPE as self-created. Some of these come off clean pick and roll actions where the defense is already compromised, which are not as hard as true isolation pull-ups
-- **Easy rim shots undercounted** — plain "Layup Shot" and "Running Layup" are classified as neutral. Many are catch-and-finish plays that belong in the easy bucket, slightly underpenalizing high-volume dunkers and lob threats
-- **Sample size** — players with fewer games have noisier shot distributions. The model does not weight by sample size
-- **Measures shots taken, not shots available** — a player on a great offensive team may pass up difficult shots because better ones exist. Jokić's low difficulty score reflects his playmaking role and system, not an inability to create hard shots
+- **One season sample**: scores reflect 2025–26 specifically. Players coming off injury, in a contract year, or in a new system will look different than their career baseline
+- **System effects**: players on bad teams face more isolation and late clock situations by necessity, inflating difficulty scores. Cam Thomas at 86.2 partly reflects Brooklyn's broken offense, not purely individual skill
+- **Pull-up classification**: the model flags any shot with "Pull-Up", "Fadeaway", or "Step Back" in ACTION_TYPE as self-created. Some of these come off clean pick and roll actions where the defense is already compromised, which are not as hard as true isolation pull-ups
+- **Easy rim shots undercounted**: plain "Layup Shot" and "Running Layup" are classified as neutral. Many are catch-and-finish plays that belong in the easy bucket, slightly underpenalizing high-volume dunkers and lob threats
+- **Sample size**: players with fewer games have noisier shot distributions. The model does not weight by sample size
+- **Measures shots taken, not shots available**: a player on a great offensive team may pass up difficult shots because better ones exist. Jokić's low difficulty score reflects his playmaking role and system, not an inability to create hard shots
 
 ---
 
@@ -197,12 +197,12 @@ Booker is the most actionable finding. He ranks 2nd in shot difficulty but 12th 
 
 ### What We Measure
 
-- **FG_PCT_CLUTCH** — field goal percentage in the 4Q of games that ended within 5 points. Closest proxy to true pressure shooting available in the data
-- **FG_PCT_BLOWOUT** — field goal percentage in games decided by 15+ points. Baseline performance with no pressure
-- **FG_PCT_LATE_GAME** — field goal percentage in the final 5 minutes of the 4Q regardless of margin
-- **FG_PCT_EARLY_GAME** — field goal percentage in the 1st and 2nd quarters. Baseline performance early
-- **FG_PCT_HOME / FG_PCT_AWAY** — shooting splits by arena. Measures consistency regardless of crowd and environment
-- **IS_END_OF_QUARTER** — shots taken in the last 4 seconds of a quarter. Desperation/heave attempts, not true shot clock pressure
+- **FG_PCT_CLUTCH**: field goal percentage in the 4Q of games that ended within 5 points. Closest proxy to true pressure shooting available in the data
+- **FG_PCT_BLOWOUT**: field goal percentage in games decided by 15+ points. Baseline performance with no pressure
+- **FG_PCT_LATE_GAME**: field goal percentage in the final 5 minutes of the 4Q regardless of margin
+- **FG_PCT_EARLY_GAME**: field goal percentage in the 1st and 2nd quarters. Baseline performance early
+- **FG_PCT_HOME / FG_PCT_AWAY**: shooting splits by arena. Measures consistency regardless of crowd and environment
+- **IS_END_OF_QUARTER**: shots taken in the last 4 seconds of a quarter. Desperation/heave attempts, not true shot clock pressure
 
 ### How the Context Score is Built
 
@@ -228,7 +228,7 @@ Higher score = player elevates in pressure situations, performs consistently lat
 
 - **Kevin Durant (62.5)** actually understates his clutch value. His blowout FG% (55.6%) is higher than his clutch FG% (54.3%), which penalizes him in this model. But shooting 54.3% in clutch situations on 35 attempts while also shooting 55.6% in blowouts means he is simply consistent everywhere, not that he shrinks. The model penalizes consistency, which is a known limitation
 
-- **SGA** at 55.6% clutch FG% on 36 attempts reinforces his Stage 3 result — efficient on hard shots and in pressure situations, the rarest combination in the dataset
+- **SGA** at 55.6% clutch FG% on 36 attempts reinforces his Stage 3 result. Shai is efficient on hard shots and in pressure situations, the rarest combination in the dataset
 
 ### Limitations
 
@@ -243,7 +243,7 @@ Higher score = player elevates in pressure situations, performs consistently lat
 
 ---
 
-## Stage 5 — Team Independence Score
+## Stage 5: Team Independence Score
 
 The previous four stages measure what a player does individually. We measured how much they score, how efficiently, on how hard shots, and in what situations. None of them answer how much of that scoring is dependent on their team's system and surrounding talent. Stage 5 addresses this by measuring how much better or worse a team performs offensively and overall when a player is on versus off the court.
 
@@ -283,7 +283,7 @@ A higher independence score means the team is meaningfully better with the playe
 
 ---
 
-## Final Model — True Scoring Impact
+## Final Model: True Scoring Impact
 
 ### Goal
 
@@ -293,11 +293,11 @@ This composite metric blends all 5 stages into a single score, rewarding players
 
 ### What We Measure
 
-- **VOLUME_SCORE (27.5%)** — How much scoring burden the player carries. Rewards players who handle high usage, attempt more shots, and play heavy minutes
-- **DIFFICULTY_ADJ_EFFICIENCY (25%)** — How efficiently the player scores adjusted for how hard their shots actually are. Rewards players who convert on self-created, high difficulty attempts
-- **EFFICIENCY_SCORE (25%)** — How efficiently the player scores relative to what is expected given their role. Rewards players who beat their expected TS% at high usage
-- **CONTEXT_SCORE (15%)** — How well the player performs in high pressure situations. Rewards players who elevate in clutch moments, late game situations, and away from home
-- **INDEPENDENCE_SCORE (7.5%)** — How much the team depends on the player's scoring. Rewards players whose presence meaningfully improves the team's offensive and overall performance
+- **VOLUME_SCORE (27.5%)**: How much scoring burden the player carries. Rewards players who handle high usage, attempt more shots, and play heavy minutes
+- **DIFFICULTY_ADJ_EFFICIENCY (25%)**: How efficiently the player scores adjusted for how hard their shots actually are. Rewards players who convert on self-created, high difficulty attempts
+- **EFFICIENCY_SCORE (25%)**: How efficiently the player scores relative to what is expected given their role. Rewards players who beat their expected TS% at high usage
+- **CONTEXT_SCORE (15%)**: How well the player performs in high pressure situations. Rewards players who elevate in clutch moments, late game situations, and away from home
+- **INDEPENDENCE_SCORE (7.5%)**: How much the team depends on the player's scoring. Rewards players whose presence meaningfully improves the team's offensive and overall performance
 
 A player who scores high across all five dimensions is not just a scorer, but a complete and irreplaceable offensive weapon. The composite rewards breadth of scoring value over dominance in any single dimension.
 
@@ -317,17 +317,17 @@ The final score is normalized to 0–100. A higher score implies a more complete
 - **Luka at 92.1** carries the highest volume score (97.3) but relatively weak efficiency (55.7). The most important finding for evaluating Luka is that he is the highest volume scorer in the dataset by a significant margin, but his efficiency and difficulty-adjusted efficiency rank lower than peers like SGA, KD, and Kawhi
 - **Jaylen Brown at 80.3** has the 2nd highest volume score (89.5) but the lowest efficiency in the top 15 (44.6), the starkest efficiency-volume gap in the dataset. Combined with a low independence score (68.6), the model suggests his scoring value comes from the Celtics offensive design as well as tough shot-making ability combined with volume and scoring reputability
 - **Cam Spencer at 75.4** averages only 11.1 PPG but ranks 23rd overall. Elite efficiency and shot difficulty carry him, but low volume correctly penalizes him from the top 10
-- **The bottom 10** consists mostly of young or developing players and inefficient big men. Players who operate on low efficiency, low difficulty, and low independence — consistent with the scoring impact formula
+- **The bottom 10** consists mostly of young or developing players and inefficient big men. Players who operate on low efficiency, low difficulty, and low independence, which is consistent with the scoring impact formula
 
 ### Limitations and Potential Bias
 
-- **Weight subjectivity** — the five stage weights are manually assigned based on basketball intuition, not statistically derived. Giving volume a slightly lower weight would elevate Kawhi and KD over Luka. Giving independence a higher weight would elevate Jokić and Wembanyama. The model reflects one defensible weighting philosophy, not the objectively correct one
-- **One season sample** — the entire model reflects 2025-26 only. Players coming off injury, in contract years, or in new systems will look different than their career baseline. Embiid's context score (36.6) partly reflects missed time and rust. Cade Cunningham's 73.9 score was impacted by a rib injury that tanked his late season volume and efficiency
-- **Scoring only** — a player like Jrue Holiday, Draymond Green, or Mikal Bridges may contribute enormous value to winning basketball without ranking highly here. This model deliberately narrows its scope to scoring impact and should not be interpreted as an overall player value metric
+- **Weight subjectivity**: the five stage weights are manually assigned based on basketball intuition, not statistically derived. Giving volume a slightly lower weight would elevate Kawhi and KD over Luka. Giving independence a higher weight would elevate Jokić and Wembanyama. The model reflects one defensible weighting philosophy, not the objectively correct one
+- **One season sample**: the entire model reflects 2025-26 only. Players coming off injury, in contract years, or in new systems will look different than their career baseline. Embiid's context score (36.6) partly reflects missed time and rust. Cade Cunningham's 73.9 score was impacted by a rib injury that tanked his late season volume and efficiency
+- **Scoring only**: a player like Jrue Holiday, Draymond Green, or Mikal Bridges may contribute enormous value to winning basketball without ranking highly here. This model deliberately narrows its scope to scoring impact and should not be interpreted as an overall player value metric
 
 ### Statistical Significance
 
 - Stage 1 and Stage 2 are built on 384 players with full season samples and are the most statistically reliable inputs. Stage 3 uses 102,400 individual shot attempts, making shot-level aggregations highly reliable for players with 200+ attempts. Stage 4 clutch splits remain the weakest input. Stage 5 on/off data is reliable for star players with heavy minutes but noisy for players with inconsistent roles
 - The top and bottom of the rankings are the most defensible findings. The 7.5 point gap between SGA (100.0) and Luka (92.1) is meaningful and consistent across multiple independent data sources. The 1.0 point gap between Jokić (88.1) and Ant (87.9) is not, thus those two players are statistically indistinguishable at this level of model precision
-- **Correlation between stages is an unresolved issue** — shot difficulty and volume are not fully independent, and difficulty and efficiency overlap by design in Stage 3. The composite is not a sum of truly independent signals. A future improvement would be to orthogonalize the stage scores using PCA before combining them, removing overlap between correlated inputs and producing a more statistically independent composite.
+- **Correlation between stages is an unresolved issue**: shot difficulty and volume are not fully independent, and difficulty and efficiency overlap by design in Stage 3. The composite is not a sum of truly independent signals. A future improvement would be to orthogonalize the stage scores using PCA before combining them, removing overlap between correlated inputs and producing a more statistically independent composite.
 
