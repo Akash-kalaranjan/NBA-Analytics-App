@@ -66,8 +66,8 @@ def fetch_player_stats(season_type):
                 timeout=60
             ).get_data_frames()[0]
             break
-        except Exception:
-            print(f"  Base timeout, retrying ({attempt + 1}/5)...")
+        except Exception as e:
+            print(f"  Base error ({attempt + 1}/5): {type(e).__name__}: {e}")
             time.sleep(5)
 
     if base is None:
@@ -86,8 +86,8 @@ def fetch_player_stats(season_type):
                 timeout=60
             ).get_data_frames()[0]
             break
-        except Exception:
-            print(f"  Advanced timeout, retrying ({attempt + 1}/5)...")
+        except Exception as e:
+            print(f"  Advanced error ({attempt + 1}/5): {type(e).__name__}: {e}")
             time.sleep(5)
 
     if advanced is None:
@@ -122,10 +122,10 @@ def fetch_shot_data(season_type):
                 timeout=60
             ).get_data_frames()[0]
             break
-        except Exception:
-            print(f"  Timeout, retrying ({attempt + 1}/5)...")
+        except Exception as e:
+            print(f"  Shot data error ({attempt + 1}/5): {type(e).__name__}: {e}")
             time.sleep(5)
-    
+
     if df is None:
         raise RuntimeError("Failed to fetch shot data after 5 attempts")
     
@@ -148,8 +148,8 @@ def fetch_game_context(season_type):
                 timeout=60
             ).get_data_frames()[0]
             break
-        except Exception:
-            print(f"  Timeout, retrying ({attempt + 1}/5)...")
+        except Exception as e:
+            print(f"  Game context error ({attempt + 1}/5): {type(e).__name__}: {e}")
             time.sleep(5)
     
     if games is None:
@@ -184,4 +184,4 @@ def build(season_type):
 if __name__ == "__main__":
     build("Regular Season")
     build("Playoffs")
-    print("\n=== Full dataset rebuild complete ===") 
+    print("\n=== Full dataset rebuild complete ===")
