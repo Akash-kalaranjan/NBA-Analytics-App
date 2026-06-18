@@ -1,4 +1,6 @@
 import os
+import random
+import requests as _requests
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -41,10 +43,35 @@ NBA_HEADERS = {
     'Connection': 'keep-alive',
 }
 
-# Reads NBA_PROXY from the environment (set via GitHub Actions secret).
-# Locally this will just be None, which means "no proxy" - exactly what we want
-# since the IP block only affects cloud-hosted runs, not your own machine.
-NBA_PROXY = os.environ.get("NBA_PROXY")
+# Fetches a fresh proxy list from Webshare API each run.
+# Falls back to NBA_PROXY env var if API key is not set (e.g. local runs).
+def _load_proxy_list():
+    api_key = os.environ.get("WEBSHARE_API_KEY")
+    if not api_key:
+        fallback = os.environ.get("NBA_PROXY")
+        return [fallback] if fallback else []
+    try:
+        r = _requests.get(
+            "https://proxy.webshare.io/api/v2/proxy/list/?mode=direct&page=1&page_size=25",
+            headers={"Authorization": f"Token {api_key}"},
+            timeout=10
+        )
+        data = r.json()
+        proxies = [
+            f"http://{p['username']}:{p['password']}@{p['proxy_address']}:{p['port']}"
+            for p in data.get("results", [])
+            if p.get("valid")
+        ]
+        print(f"  Loaded {len(proxies)} proxies from Webshare API")
+        return proxies if proxies else []
+    except Exception as e:
+        print(f"  Failed to fetch proxy list from Webshare: {e}")
+        return []
+
+PROXY_LIST = _load_proxy_list()
+
+def get_proxy():
+    return random.choice(PROXY_LIST) if PROXY_LIST else None
 
 
 # ── Fetch Functions ───────────────────────────────────────────────────────────
@@ -62,7 +89,7 @@ def fetch_player_stats(season_type):
                 per_mode_detailed="PerGame",
                 measure_type_detailed_defense="Base",
                 headers=NBA_HEADERS,
-                proxy=NBA_PROXY,
+                proxy=get_proxy(),
                 timeout=60
             ).get_data_frames()[0]
             break
@@ -82,7 +109,7 @@ def fetch_player_stats(season_type):
                 per_mode_detailed="PerGame",
                 measure_type_detailed_defense="Advanced",
                 headers=NBA_HEADERS,
-                proxy=NBA_PROXY,
+                proxy=get_proxy(),
                 timeout=60
             ).get_data_frames()[0]
             break
@@ -118,7 +145,7 @@ def fetch_shot_data(season_type):
                 season_type_all_star=season_type,
                 context_measure_simple="FGA",
                 headers=NBA_HEADERS,
-                proxy=NBA_PROXY,
+                proxy=get_proxy(),
                 timeout=60
             ).get_data_frames()[0]
             break
@@ -144,7 +171,7 @@ def fetch_game_context(season_type):
                 season_nullable=SEASON,
                 season_type_nullable="Playoffs" if season_type == "Playoffs" else "Regular Season",
                 headers=NBA_HEADERS,
-                proxy=NBA_PROXY,
+                proxy=get_proxy(),
                 timeout=60
             ).get_data_frames()[0]
             break
