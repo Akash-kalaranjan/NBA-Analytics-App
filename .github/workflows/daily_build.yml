@@ -24,6 +24,7 @@ jobs:
       - name: Run build
         env:
           NBA_PROXY: ${{ secrets.NBA_PROXY }}
+          WEBSHARE_API_KEY: ${{ secrets.WEBSHARE_API_KEY }}
         run: python Models/build_dataset.py
 
       - name: Commit and push fresh data
