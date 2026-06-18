@@ -1,0 +1,35 @@
+Build started at 2026-06-18_08-13-22
+Project dir: C:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App
+============================================================
+
+STDOUT:
+  WEBSHARE_API_KEY present: False
+  NBA_PROXY fallback present: False
+
+==================================================
+  BUILDING: Regular Season
+==================================================
+
+Fetching player stats (Regular Season)...
+  Base error (1/5): ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=60)
+  Base error (2/5): ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=60)
+  Base error (3/5): ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=60)
+  Base error (4/5): ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=60)
+  Base error (5/5): ReadTimeout: HTTPSConnectionPool(host='stats.nba.com', port=443): Read timed out. (read timeout=60)
+
+
+STDERR:
+Traceback (most recent call last):
+  File "C:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 218, in <module>
+    build("Regular Season")
+  File "C:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 206, in build
+    fetch_player_stats(season_type)
+  File "C:\Users\akash\OneDrive\Desktop\New folder\NBA-Analytics-App\Models\build_dataset.py", line 107, in fetch_player_stats
+    raise RuntimeError("Failed to fetch base player stats after 5 attempts")
+RuntimeError: Failed to fetch base player stats after 5 attempts
+
+
+============================================================
+Build finished at 2026-06-18 08:19:00
+Exit code: 1
+Build failed
