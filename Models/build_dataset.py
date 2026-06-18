@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -40,6 +41,11 @@ NBA_HEADERS = {
     'Connection': 'keep-alive',
 }
 
+# Reads NBA_PROXY from the environment (set via GitHub Actions secret).
+# Locally this will just be None, which means "no proxy" - exactly what we want
+# since the IP block only affects cloud-hosted runs, not your own machine.
+NBA_PROXY = os.environ.get("NBA_PROXY")
+
 
 # ── Fetch Functions ───────────────────────────────────────────────────────────
 
@@ -54,7 +60,10 @@ def fetch_player_stats(season_type):
                 season=SEASON,
                 season_type_all_star=season_type,
                 per_mode_detailed="PerGame",
-                measure_type_detailed_defense="Base"
+                measure_type_detailed_defense="Base",
+                headers=NBA_HEADERS,
+                proxy=NBA_PROXY,
+                timeout=60
             ).get_data_frames()[0]
             break
         except Exception:
@@ -71,7 +80,10 @@ def fetch_player_stats(season_type):
                 season=SEASON,
                 season_type_all_star=season_type,
                 per_mode_detailed="PerGame",
-                measure_type_detailed_defense="Advanced"
+                measure_type_detailed_defense="Advanced",
+                headers=NBA_HEADERS,
+                proxy=NBA_PROXY,
+                timeout=60
             ).get_data_frames()[0]
             break
         except Exception:
@@ -104,7 +116,10 @@ def fetch_shot_data(season_type):
                 player_id=0,
                 season_nullable=SEASON,
                 season_type_all_star=season_type,
-                context_measure_simple="FGA"
+                context_measure_simple="FGA",
+                headers=NBA_HEADERS,
+                proxy=NBA_PROXY,
+                timeout=60
             ).get_data_frames()[0]
             break
         except Exception:
@@ -127,7 +142,10 @@ def fetch_game_context(season_type):
         try:
             games = leaguegamefinder.LeagueGameFinder(
                 season_nullable=SEASON,
-                season_type_nullable="Playoffs" if season_type == "Playoffs" else "Regular Season"
+                season_type_nullable="Playoffs" if season_type == "Playoffs" else "Regular Season",
+                headers=NBA_HEADERS,
+                proxy=NBA_PROXY,
+                timeout=60
             ).get_data_frames()[0]
             break
         except Exception:
@@ -166,4 +184,4 @@ def build(season_type):
 if __name__ == "__main__":
     build("Regular Season")
     build("Playoffs")
-    print("\n=== Full dataset rebuild complete ===")
+    print("\n=== Full dataset rebuild complete ===") 
