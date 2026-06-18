@@ -29,6 +29,18 @@ except ImportError:
 DATA_DIR = Path(__file__).parent.parent / "Data"
 SEASON = "2025-26"
 
+NBA_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Referer': 'https://www.nba.com/',
+    'x-nba-stats-origin': 'stats',
+    'x-nba-stats-token': 'true',
+    'Connection': 'keep-alive',
+}
+
+
 # ── Fetch Functions ───────────────────────────────────────────────────────────
 
 def fetch_player_stats(season_type):
